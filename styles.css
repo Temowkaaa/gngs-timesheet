@@ -372,6 +372,8 @@ h3 {
   gap: 7px;
   padding: 0 14px;
   font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .text-button svg,
@@ -398,6 +400,12 @@ h3 {
 .primary-action {
   background: var(--accent);
   border-color: var(--accent);
+  color: #fff;
+}
+
+.primary-action,
+.primary-action svg,
+.primary-action span {
   color: #fff;
 }
 
@@ -518,7 +526,7 @@ h3 {
   gap: 5px;
 }
 
-.employee-form span {
+.employee-form label > span {
   color: var(--muted);
   font-size: 12px;
 }
@@ -538,6 +546,13 @@ h3 {
   justify-content: flex-end;
   align-items: center;
   gap: 8px;
+}
+
+.form-actions .text-button,
+.profile-edit-actions .text-button {
+  min-height: 36px;
+  padding: 0 14px;
+  align-items: center;
 }
 
 .timesheet-panel {
@@ -728,11 +743,30 @@ h3 {
   font-size: 18px;
 }
 
-.empty-state span {
+.empty-state > span {
   max-width: 360px;
   color: var(--muted);
   font-size: 13px;
   line-height: 1.4;
+}
+
+.loading-state {
+  color: var(--muted);
+}
+
+.loading-spinner {
+  width: 38px;
+  height: 38px;
+  border: 3px solid color-mix(in srgb, var(--accent) 18%, var(--line-soft));
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.85s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .employees-list {
@@ -1846,7 +1880,7 @@ dd {
   gap: 5px;
 }
 
-.profile-edit-form span {
+.profile-edit-form label > span {
   color: var(--muted);
   font-size: 12px;
 }
@@ -2097,9 +2131,15 @@ body[data-theme="dark"] .icon-button:hover {
 
 body[data-theme="dark"] .primary-icon,
 body[data-theme="dark"] .primary-action {
-  background: var(--accent-strong);
-  border-color: var(--accent-strong);
-  color: #06221d;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+body[data-theme="dark"] .primary-action,
+body[data-theme="dark"] .primary-action svg,
+body[data-theme="dark"] .primary-action span {
+  color: #fff;
 }
 
 @media (max-width: 1280px) {

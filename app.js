@@ -324,6 +324,7 @@ const state = {
   activeCell: null,
   dutyFilterDates: [],
   updateStatus: null,
+  employeesLoading: Boolean(SUPABASE.url && SUPABASE.key),
 };
 
 const employeeSearch = document.querySelector("#employeeSearch");
@@ -696,7 +697,7 @@ async function addEmployee(event) {
     firstName,
     middleName,
     role: document.querySelector("#newEmployeeRole").value,
-    grade: document.querySelector("#newEmployeeGrade").value.trim() || defaultGrade(document.querySelector("#newEmployeeRole").value),
+    grade: normalizeGradeInput(document.querySelector("#newEmployeeGrade").value),
     phone: normalizedPhoneValue("#newEmployeePhone"),
     start: new Date().toLocaleDateString("ru-RU"),
     timeoffBalance: daysToHours(readNumberInput("#newEmployeeTimeoffBalance")),
@@ -770,6 +771,16 @@ function emptyEmployeesState(title, text = "Добавьте первого со
   `;
 }
 
+function employeesLoadingState(text = "Загружаем сотрудников...") {
+  return `
+    <div class="empty-state loading-state" aria-live="polite">
+      <div class="loading-spinner" aria-hidden="true"></div>
+      <strong>${escapeHtml(text)}</strong>
+      <span>Подождите немного, данные загружаются из общей базы.</span>
+    </div>
+  `;
+}
+
 function bindEmptyStateActions(root) {
   root.querySelectorAll("[data-empty-add-employee]").forEach((button) => {
     button.addEventListener("click", openEmployeeModal);
@@ -790,6 +801,10 @@ function renderTimesheet() {
   if (employeesToShow.length === 0) {
     timesheetTable.innerHTML = "";
     timesheetTable.parentElement.querySelector(".empty-state")?.remove();
+    if (state.employeesLoading) {
+      timesheetTable.insertAdjacentHTML("afterend", employeesLoadingState());
+      return;
+    }
     const hasSearch = employeeSearch.value.trim().length > 0;
     timesheetTable.insertAdjacentHTML(
       "afterend",
@@ -880,6 +895,10 @@ function renderTimesheet() {
 function renderEmployeesList() {
   const employeesToShow = filteredEmployees();
   if (employeesToShow.length === 0) {
+    if (state.employeesLoading) {
+      employeesList.innerHTML = employeesLoadingState();
+      return;
+    }
     const hasSearch = employeeSearch.value.trim().length > 0;
     employeesList.innerHTML = emptyEmployeesState(
       hasSearch ? "Поиск ничего не нашел" : "Сотрудники не найдены",
@@ -988,7 +1007,7 @@ function renderEmployeesList() {
           <dl class="employee-info-list">
             <div><dt>Телефон</dt><dd>${escapeHtml(selectedEmployee.phone)}</dd></div>
             <div><dt>Дата приема</dt><dd>${escapeHtml(selectedEmployee.start)}</dd></div>
-            <div><dt>Разряд</dt><dd>${escapeHtml(selectedEmployee.grade)}</dd></div>
+            <div><dt>Разряд</dt><dd>${escapeHtml(formatGrade(selectedEmployee.grade))}</dd></div>
             <div><dt>Статус</dt><dd>${escapeHtml(selectedEmployee.status)}</dd></div>
             <div><dt>Примечание</dt><dd>${escapeHtml(selectedEmployee.note || "Не указано")}</dd></div>
           </dl>
@@ -1203,6 +1222,10 @@ function renderDutySchedule() {
   if (employees.length === 0) {
     dutyTable.innerHTML = "";
     dutyTable.parentElement.querySelector(".empty-state")?.remove();
+    if (state.employeesLoading) {
+      dutyTable.insertAdjacentHTML("afterend", employeesLoadingState());
+      return;
+    }
     dutyTable.insertAdjacentHTML("afterend", emptyEmployeesState("В графике пока нет сотрудников"));
     bindEmptyStateActions(dutyTable.parentElement);
     return;
@@ -1565,7 +1588,7 @@ function buildEmployeeReportPayload() {
         rows: [
           ["ФИО", fullName(employee)],
           ["Должность", employee.role],
-          ["Разряд", employee.grade],
+          ["Разряд", formatGrade(employee.grade)],
           ["Телефон", employee.phone],
           ["Дата приема", employee.start],
         ],
@@ -1708,7 +1731,7 @@ function renderProfile() {
   document.querySelector("#profileRole").textContent = employee.role;
   document.querySelector("#profilePhone").textContent = employee.phone;
   document.querySelector("#profileStart").textContent = employee.start;
-  document.querySelector("#profileGrade").textContent = employee.grade;
+  document.querySelector("#profileGrade").textContent = formatGrade(employee.grade);
   if (document.activeElement !== profileTimeoffBalanceInput) {
     profileTimeoffBalanceInput.value = formatHours(hoursToDays(baseTimeoffBalance(employee)));
   }
@@ -1768,7 +1791,7 @@ function openProfileEdit() {
   document.querySelector("#editEmployeeFirstName").value = employee.firstName;
   document.querySelector("#editEmployeeMiddleName").value = employee.middleName ?? "";
   document.querySelector("#editEmployeeRole").value = employee.role;
-  document.querySelector("#editEmployeeGrade").value = employee.grade ?? "";
+  document.querySelector("#editEmployeeGrade").value = gradeInputValue(employee.grade);
   document.querySelector("#editEmployeePhone").value = employee.phone === "-" ? "" : employee.phone;
   document.querySelector("#editEmployeeTimeoffBalance").value = hoursToDays(baseTimeoffBalance(employee));
   renderProfile();
@@ -1797,7 +1820,7 @@ async function saveProfileEdit(event) {
   employee.firstName = firstName;
   employee.middleName = document.querySelector("#editEmployeeMiddleName").value.trim();
   employee.role = document.querySelector("#editEmployeeRole").value;
-  employee.grade = document.querySelector("#editEmployeeGrade").value.trim() || defaultGrade(employee.role);
+  employee.grade = normalizeGradeInput(document.querySelector("#editEmployeeGrade").value);
   employee.phone = normalizedPhoneValue("#editEmployeePhone");
   employee.timeoffBalance = daysToHours(readNumberInput("#editEmployeeTimeoffBalance"));
 
@@ -2161,7 +2184,7 @@ function normalizeEmployee(employee) {
     return {
       ...employeeData,
       role: normalizePosition(employee.role),
-      grade: employee.grade || defaultGrade(employee.role),
+      grade: normalizeGradeInput(employee.grade),
       middleName,
       timeoffBalance: baseTimeoffBalance(employee),
       photo: typeof employee.photo === "string" ? employee.photo : "",
@@ -2179,7 +2202,7 @@ function normalizeEmployee(employee) {
     firstName,
     middleName,
     role: normalizePosition(employee.role),
-    grade: employee.grade || defaultGrade(employee.role),
+    grade: normalizeGradeInput(employee.grade),
     timeoffBalance: baseTimeoffBalance(employee),
     photo: typeof employee.photo === "string" ? employee.photo : "",
   };
@@ -2187,17 +2210,32 @@ function normalizeEmployee(employee) {
 
 function defaultGrade(role) {
   const normalized = normalizePosition(role);
-  if (normalized === "Начальник участка" || normalized === "Начальник цеха" || normalized === "Мастер") return "без разряда";
+  if (normalized === "Начальник участка" || normalized === "Начальник цеха" || normalized === "Мастер") return "";
   const grades = {
-    "электромонтер": "4 разряд",
-    "сварщик": "5 разряд",
-    "токарь": "4 разряд",
-    "фрезеровщик": "4 разряд",
-    "обмотчик": "3 разряд",
-    "трансформаторщик": "4 разряд",
-    "пропитчик": "3 разряд",
+    "электромонтер": "4",
+    "сварщик": "5",
+    "токарь": "4",
+    "фрезеровщик": "4",
+    "обмотчик": "3",
+    "трансформаторщик": "4",
+    "пропитчик": "3",
   };
-  return grades[normalized] ?? "4 разряд";
+  return grades[normalized] ?? "4";
+}
+
+function normalizeGradeInput(value) {
+  const normalized = String(value ?? "").trim().replace(",", ".");
+  const match = normalized.match(/\d+(?:\.\d+)?/);
+  return match ? match[0] : "";
+}
+
+function gradeInputValue(value) {
+  return normalizeGradeInput(value);
+}
+
+function formatGrade(value) {
+  const grade = normalizeGradeInput(value);
+  return grade ? `${grade} разряд` : "";
 }
 
 function normalizePosition(role) {
@@ -2328,7 +2366,12 @@ function loadSettings() {
 }
 
 async function syncEmployeesFromSupabase() {
-  if (!SUPABASE.url || !SUPABASE.key) return;
+  if (!SUPABASE.url || !SUPABASE.key) {
+    state.employeesLoading = false;
+    return;
+  }
+  state.employeesLoading = true;
+  render();
   try {
     const remoteEmployees = await fetchSupabaseEmployees();
     employees = remoteEmployees.map(normalizeEmployee);
@@ -2336,9 +2379,11 @@ async function syncEmployeesFromSupabase() {
       state.selectedEmployeeId = employees[0]?.id ?? "";
     }
     fillPositionSelects();
-    render();
   } catch (error) {
     console.warn("Supabase employees sync skipped:", error.message);
+  } finally {
+    state.employeesLoading = false;
+    render();
   }
 }
 
