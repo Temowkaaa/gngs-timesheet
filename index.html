@@ -172,12 +172,12 @@
                 <dd>ГНГС табель учета</dd>
               </div>
               <div>
-                <dt>Версия</dt>
-                <dd id="appVersion">1.0.0</dd>
+                <dt>Автор</dt>
+                <dd>Галишников Артем</dd>
               </div>
               <div>
-                <dt>Данные</dt>
-                <dd id="appDataInfo">Сотрудники в Supabase, табель и настройки локально</dd>
+                <dt>Версия</dt>
+                <dd id="appVersion">1.0.0</dd>
               </div>
               <div>
                 <dt>Автозапуск</dt>
@@ -185,12 +185,18 @@
               </div>
               <div>
                 <dt>Обновления</dt>
-                <dd id="appUpdateInfo">GitHub Releases</dd>
+                <dd id="appUpdateInfo">Готово к проверке</dd>
               </div>
             </dl>
             <div class="app-update-actions">
-              <button id="checkUpdatesButton" class="text-button compact-button" type="button">Проверить обновления</button>
-              <button id="installUpdateButton" class="text-button compact-button primary-action" type="button" hidden>Установить</button>
+              <button id="checkUpdatesButton" class="text-button compact-button" type="button">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8.1 8.1 0 0 0-15.5-2m-.5-4v4h4" /><path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4" /></svg>
+                <span>Проверить обновления</span>
+              </button>
+              <button id="installUpdateButton" class="text-button compact-button primary-action" type="button" hidden>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12" /><path d="M7 10l5 5l5-5" /><path d="M5 21h14" /></svg>
+                <span>Установить</span>
+              </button>
             </div>
           </div>
         </div>
@@ -199,7 +205,10 @@
 
     <aside id="employeeDrawer" class="employee-drawer" aria-label="Личная карточка сотрудника" aria-hidden="true">
       <div class="drawer-actions">
-        <button id="editEmployee" class="text-button" type="button">Редактировать</button>
+        <button id="editEmployee" class="text-button" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1l1-4z" /></svg>
+          <span>Редактировать</span>
+        </button>
         <button id="closeDrawer" class="icon-button" type="button" aria-label="Закрыть карточку">
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M18 6l-12 12" />
@@ -218,10 +227,6 @@
       </div>
 
       <dl class="profile-details">
-        <div>
-          <dt>Табельный номер</dt>
-          <dd id="profileNumber">-</dd>
-        </div>
         <div>
           <dt>Телефон</dt>
           <dd id="profilePhone">-</dd>
@@ -304,7 +309,10 @@
         <textarea id="employeeNote" rows="4"></textarea>
       </label>
 
-      <button id="deleteEmployee" class="text-button danger-action" type="button">Удалить сотрудника</button>
+      <button id="deleteEmployee" class="text-button danger-action" type="button">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16" /><path d="M10 11v6" /><path d="M14 11v6" /><path d="M6 7l1 14h10l1-14" /><path d="M9 7V4h6v3" /></svg>
+        <span>Удалить сотрудника</span>
+      </button>
     </aside>
 
     <main class="app">
@@ -318,9 +326,18 @@
         </div>
 
         <nav class="app-tabs" aria-label="Разделы приложения">
-          <button class="tab-button is-active" type="button" data-view-tab="timesheet">Табель</button>
-          <button class="tab-button" type="button" data-view-tab="employees">Сотрудники</button>
-          <button class="tab-button" type="button" data-view-tab="duty">График дежурств</button>
+          <button class="tab-button is-active" type="button" data-view-tab="timesheet">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16" /><path d="M4 10h16" /><path d="M4 15h16" /><path d="M8 5v14" /></svg>
+            <span>Табель</span>
+          </button>
+          <button class="tab-button" type="button" data-view-tab="employees">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 7a4 4 0 1 0 8 0a4 4 0 0 0-8 0" /><path d="M4 21v-2a5 5 0 0 1 5-5h6a5 5 0 0 1 5 5v2" /></svg>
+            <span>Сотрудники</span>
+          </button>
+          <button class="tab-button" type="button" data-view-tab="duty">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8v5l3 2" /><path d="M5 3v4" /><path d="M19 3v4" /><path d="M4 7h16" /><path d="M5 7v13h14V7" /></svg>
+            <span>График дежурств</span>
+          </button>
         </nav>
 
         <div class="header-actions">
@@ -348,7 +365,7 @@
           <div id="searchPopover" class="search-popover" hidden>
             <label class="search">
               <span aria-hidden="true">⌕</span>
-              <input id="employeeSearch" type="search" placeholder="Поиск по ФИО, должности или номеру" />
+              <input id="employeeSearch" type="search" placeholder="Поиск по ФИО или должности" />
             </label>
           </div>
         </div>
@@ -365,7 +382,10 @@
                   <path d="M15 6l-6 6l6 6" />
                 </svg>
               </button>
-              <button id="todayButton" class="text-button compact-button" type="button">Текущий месяц</button>
+              <button id="todayButton" class="text-button compact-button" type="button">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3v3" /><path d="M16 3v3" /><path d="M4 9h16" /><path d="M5 5h14v15H5z" /></svg>
+                <span>Текущий месяц</span>
+              </button>
               <button id="nextMonth" class="icon-button" type="button" title="Следующий месяц" aria-label="Следующий месяц">
                 <svg viewBox="0 0 24 24" aria-hidden="true">
                   <path d="M9 6l6 6l-6 6" />
@@ -390,9 +410,18 @@
         <div class="table-caption">
           <h3>Табель посещения работы сотрудниками</h3>
           <div class="export-actions" aria-label="Печать и экспорт">
-            <button id="printTimesheet" class="text-button compact-button" type="button">Печать</button>
-            <button id="exportExcel" class="text-button compact-button" type="button">Excel</button>
-            <button id="exportDocx" class="text-button compact-button" type="button">DOCX</button>
+            <button id="printTimesheet" class="text-button compact-button" type="button">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9V2h12v7" /><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><path d="M6 14h12v8H6z" /></svg>
+              <span>Печать</span>
+            </button>
+            <button id="exportExcel" class="text-button compact-button" type="button">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v16H4z" /><path d="M4 10h16" /><path d="M10 4v16" /><path d="M14 14l3 3" /><path d="M17 14l-3 3" /></svg>
+              <span>Excel</span>
+            </button>
+            <button id="exportDocx" class="text-button compact-button" type="button">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 2h9l5 5v15H6z" /><path d="M14 2v6h6" /><path d="M9 13h8" /><path d="M9 17h5" /></svg>
+              <span>DOCX</span>
+            </button>
           </div>
         </div>
         <div id="timesheetScroller" class="timesheet-scroller">
@@ -414,13 +443,28 @@
             <label class="duty-extra-day">
               <span>Доп. день</span>
               <input id="dutyExtraDate" type="date" />
-              <button id="addDutyExtraDate" class="text-button compact-button" type="button">+</button>
+              <button id="addDutyExtraDate" class="text-button compact-button" type="button">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14" /><path d="M5 12h14" /></svg>
+                <span>Добавить</span>
+              </button>
             </label>
             <div id="dutyExtraDays" class="duty-extra-days"></div>
-            <button id="openDutyFilter" class="text-button compact-button duty-filter-trigger" type="button">Дни</button>
-            <button id="printDuty" class="text-button compact-button" type="button">Печать</button>
-            <button id="exportDutyExcel" class="text-button compact-button" type="button">Excel</button>
-            <button id="exportDutyDocx" class="text-button compact-button" type="button">DOCX</button>
+            <button id="openDutyFilter" class="text-button compact-button duty-filter-trigger" type="button">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16" /><path d="M7 12h10" /><path d="M10 18h4" /></svg>
+              <span>Дни</span>
+            </button>
+            <button id="printDuty" class="text-button compact-button" type="button">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9V2h12v7" /><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><path d="M6 14h12v8H6z" /></svg>
+              <span>Печать</span>
+            </button>
+            <button id="exportDutyExcel" class="text-button compact-button" type="button">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v16H4z" /><path d="M4 10h16" /><path d="M10 4v16" /><path d="M14 14l3 3" /><path d="M17 14l-3 3" /></svg>
+              <span>Excel</span>
+            </button>
+            <button id="exportDutyDocx" class="text-button compact-button" type="button">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 2h9l5 5v15H6z" /><path d="M14 2v6h6" /><path d="M9 13h8" /><path d="M9 17h5" /></svg>
+              <span>DOCX</span>
+            </button>
           </div>
         </div>
         <div id="dutyScroller" class="timesheet-scroller">
@@ -433,7 +477,9 @@
       <div class="hours-field">
         <span>Часы</span>
         <input id="statusHours" type="number" min="0" max="24" step="0.1" value="8" inputmode="decimal" />
-        <button class="work-button" type="button" data-status="present" title="Поставить рабочие часы">✓</button>
+        <button class="work-button" type="button" data-status="present" title="Поставить рабочие часы">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l4 4L19 6" /></svg>
+        </button>
       </div>
       <button type="button" data-status="duty"><span class="dot duty"></span>Дежурство</button>
       <button type="button" data-status="absence"><span class="dot absence"></span>Неявка</button>
@@ -441,22 +487,33 @@
       <button type="button" data-status="timeoff"><span class="dot timeoff"></span>Отгул</button>
       <button type="button" data-status="administrative"><span class="dot administrative"></span>Административный</button>
       <button type="button" data-status="sick"><span class="dot sick"></span>Больничный</button>
-      <button class="clear-status" type="button" data-status="">Очистить</button>
+      <button class="clear-status" type="button" data-status="">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16" /><path d="M10 11v6" /><path d="M14 11v6" /><path d="M6 7l1 14h10l1-14" /><path d="M9 7V4h6v3" /></svg>
+        <span>Очистить</span>
+      </button>
     </div>
 
     <div id="dutyMenu" class="status-menu duty-hours-menu" hidden>
       <div class="hours-field">
         <span>Часы</span>
         <input id="dutyHours" type="number" min="0" max="24" step="0.1" value="8" inputmode="decimal" />
-        <button id="saveDutyHours" class="work-button" type="button" title="Поставить дежурство">✓</button>
+        <button id="saveDutyHours" class="work-button" type="button" title="Поставить дежурство">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l4 4L19 6" /></svg>
+        </button>
       </div>
-      <button id="clearDutyHours" class="clear-status" type="button">Очистить</button>
+      <button id="clearDutyHours" class="clear-status" type="button">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16" /><path d="M10 11v6" /><path d="M14 11v6" /><path d="M6 7l1 14h10l1-14" /><path d="M9 7V4h6v3" /></svg>
+        <span>Очистить</span>
+      </button>
     </div>
 
     <div id="dutyFilterPopover" class="duty-filter-popover" hidden>
       <div class="duty-filter-head">
         <strong>Дни для печати</strong>
-        <button id="clearDutyFilterButton" type="button">Все</button>
+        <button id="clearDutyFilterButton" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16" /><path d="M4 12h16" /><path d="M4 18h16" /></svg>
+          <span>Все</span>
+        </button>
       </div>
       <div id="dutyFilterDays" class="duty-filter-days"></div>
     </div>

@@ -4,6 +4,11 @@ const fs = require("fs");
 const path = require("path");
 
 let mainWindow = null;
+const updateFeed = {
+  provider: "github",
+  owner: "Temowkaaa",
+  repo: "gngs-timesheet",
+};
 
 if (process.platform === "win32") {
   app.setAppUserModelId("ru.gngs.timesheet");
@@ -98,6 +103,7 @@ ipcMain.handle("updates:install", () => {
 function configureAutoUpdater() {
   autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = true;
+  autoUpdater.setFeedURL(updateFeed);
 
   autoUpdater.on("checking-for-update", () => sendUpdateStatus("checking", "Проверяем обновления..."));
   autoUpdater.on("update-available", (info) => {
@@ -120,7 +126,7 @@ function sendUpdateStatus(status, message) {
 function updateErrorMessage(error) {
   const message = String(error?.message ?? error);
   if (message.includes("CHANGE_ME") || message.includes("latest.yml") || message.includes("app-update.yml")) {
-    return "Канал обновлений GitHub еще не настроен.";
+    return "Обновления пока недоступны.";
   }
   return `Не удалось проверить обновления: ${message}`;
 }
@@ -145,39 +151,47 @@ function buildXlsx(payload) {
   if (payload?.type === "employee") return buildEmployeeXlsx(payload);
 
   const rows = [
-    [payload.title],
-    [],
-    ["ФИО", "Должность", ...payload.days.map((day) => day.weekday)],
-    ["", "", ...payload.days.map((day) => day.day)],
-    ...payload.rows.map((row) => [row.name, row.role, ...row.cells]),
-    [],
-    ["Расшифровка"],
-    ...payload.legend.map((item) => [item.code, item.name]),
+    { values: [payload.title], style: 1, height: 24 },
+    { values: [], style: 0 },
+    { values: ["ФИО", "Должность", ...payload.days.map((day) => day.weekday)], style: 2, height: 22 },
+    { values: ["", "", ...payload.days.map((day) => day.day)], style: 2, height: 22 },
+    ...payload.rows.map((row) => ({ values: [row.name, row.role, ...row.cells], style: 0, height: 30 })),
+    { values: [], style: 0 },
+    { values: ["Расшифровка"], style: 5, height: 22 },
+    ...payload.legend.map((item) => ({ values: [item.code, item.name], style: 0, height: 20 })),
   ];
 
-  const sheetRows = rows
-    .map((row, rowIndex) => {
-      const cells = row
-        .map((value, columnIndex) => {
-          const ref = `${columnName(columnIndex + 1)}${rowIndex + 1}`;
-          return `<c r="${ref}" t="inlineStr"><is><t>${escapeXml(value)}</t></is></c>`;
-        })
-        .join("");
-      return `<row r="${rowIndex + 1}">${cells}</row>`;
-    })
-    .join("");
+  const sheetRows = rows.map((row, rowIndex) => xlsxRow(row.values, rowIndex, row.style, row.height)).join("");
+  const lastDayColumn = columnName(payload.days.length + 2);
+  const legendStart = payload.rows.length + 7;
 
   const worksheet = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <sheetViews><sheetView workbookViewId="0"><pane ySplit="4" topLeftCell="A5" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>
+  <sheetFormatPr defaultRowHeight="18"/>
+  <cols>
+    <col min="1" max="1" width="30" customWidth="1"/>
+    <col min="2" max="2" width="18" customWidth="1"/>
+    <col min="3" max="${payload.days.length + 2}" width="5.2" customWidth="1"/>
+  </cols>
   <sheetData>${sheetRows}</sheetData>
+  <mergeCells count="2">
+    <mergeCell ref="A1:${lastDayColumn}1"/>
+    <mergeCell ref="A${legendStart}:B${legendStart}"/>
+  </mergeCells>
 </worksheet>`;
 
+  return buildXlsxPackage("Табель", worksheet);
+}
+
+function buildXlsxPackage(sheetName, worksheet) {
   return zipStore({
     "[Content_Types].xml": `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
   <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
   <Default Extension="xml" ContentType="application/xml"/>
   <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+  <Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
   <Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
 </Types>`,
     "_rels/.rels": `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -186,12 +200,14 @@ function buildXlsx(payload) {
 </Relationships>`,
     "xl/workbook.xml": `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
-  <sheets><sheet name="Табель" sheetId="1" r:id="rId1"/></sheets>
+  <sheets><sheet name="${escapeXml(sheetName)}" sheetId="1" r:id="rId1"/></sheets>
 </workbook>`,
     "xl/_rels/workbook.xml.rels": `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
   <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>
+  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
 </Relationships>`,
+    "xl/styles.xml": xlsxStyles(),
     "xl/worksheets/sheet1.xml": worksheet,
   });
 }
@@ -199,16 +215,33 @@ function buildXlsx(payload) {
 function buildDocx(payload) {
   if (payload?.type === "employee") return buildEmployeeDocx(payload);
 
-  const headerCells = ["ФИО", "Должность", ...payload.days.map((day) => `${day.weekday}\n${day.day}`)];
-  const tableRows = [
-    headerCells,
-    ...payload.rows.map((row) => [row.name, row.role, ...row.cells]),
-  ]
-    .map((row) => `<w:tr>${row.map((cell) => docxCell(cell)).join("")}</w:tr>`)
+  const dayWidth = 340;
+  const nameWidth = 2100;
+  const roleWidth = 1700;
+  const grid = [nameWidth, roleWidth, ...payload.days.map(() => dayWidth)];
+  const headerRows = `
+    <w:tr>
+      ${docxCell("ФИО", { width: nameWidth, header: true })}
+      ${docxCell("Должность", { width: roleWidth, header: true })}
+      ${payload.days.map((day) => docxCell(day.weekday, { width: dayWidth, header: true, align: "center", size: 12, noWrap: true })).join("")}
+    </w:tr>
+    <w:tr>
+      ${docxCell("", { width: nameWidth, header: true })}
+      ${docxCell("", { width: roleWidth, header: true })}
+      ${payload.days.map((day) => docxCell(day.day, { width: dayWidth, header: true, align: "center", size: 12, noWrap: true })).join("")}
+    </w:tr>`;
+  const bodyRows = payload.rows
+    .map(
+      (row) => `<w:tr>
+        ${docxCell(row.name, { width: nameWidth, size: 13 })}
+        ${docxCell(row.role, { width: roleWidth, size: 13 })}
+        ${row.cells.map((cell) => docxCell(cell, { width: dayWidth, align: "center", size: 12, noWrap: true })).join("")}
+      </w:tr>`
+    )
     .join("");
 
   const legend = payload.legend
-    .map((item) => `<w:p><w:r><w:t>${escapeXml(`${item.code} - ${item.name}`)}</w:t></w:r></w:p>`)
+    .map((item) => docxParagraph(`${item.code} - ${item.name}`, false, 16))
     .join("");
 
   return zipStore({
@@ -225,73 +258,92 @@ function buildDocx(payload) {
     "word/document.xml": `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
   <w:body>
-    <w:p><w:r><w:t>${escapeXml(payload.title)}</w:t></w:r></w:p>
-    <w:tbl>${tableRows}</w:tbl>
-    <w:p><w:r><w:t>Расшифровка</w:t></w:r></w:p>
+    ${docxParagraph(payload.title, true, 20)}
+    <w:tbl>${docxTableProperties("fixed", grid)}${headerRows}${bodyRows}</w:tbl>
+    ${docxParagraph("Расшифровка", true, 16)}
     ${legend}
-    <w:sectPr><w:pgSz w:w="16838" w:h="11906" w:orient="landscape"/></w:sectPr>
+    <w:sectPr><w:pgSz w:w="16838" w:h="11906" w:orient="landscape"/><w:pgMar w:top="420" w:right="360" w:bottom="420" w:left="360" w:header="0" w:footer="0" w:gutter="0"/></w:sectPr>
   </w:body>
 </w:document>`,
   });
 }
 
 function buildEmployeeXlsx(payload) {
-  const rows = [[payload.title], []];
-  payload.sections.forEach((section) => {
-    rows.push([section.title]);
-    if (section.headers) rows.push(section.headers);
-    section.rows.forEach((row) => rows.push(row));
-    rows.push([]);
-  });
+  const [employeeInfo, timeoff, currentStats, monthlyStats] = payload.sections;
+  const rows = [
+    { values: [payload.title, "", "", "", "", ""], style: 1, height: 28 },
+    { values: [], style: 0 },
+    { values: [employeeInfo.title, "", "", timeoff.title, "", ""], style: 5, height: 22 },
+    ...Array.from({ length: Math.max(employeeInfo.rows.length, timeoff.rows.length) }, (_, index) => ({
+      values: [
+        employeeInfo.rows[index]?.[0] ?? "",
+        employeeInfo.rows[index]?.[1] ?? "",
+        "",
+        timeoff.rows[index]?.[0] ?? "",
+        timeoff.rows[index]?.[1] ?? "",
+        "",
+      ],
+      style: 0,
+      height: 24,
+    })),
+    { values: [], style: 0 },
+    { values: [currentStats.title, "", "", "", "", ""], style: 5, height: 22 },
+    { values: ["Рабочих дней", "Часов", "", "Дежурств", "", ""], style: 2, height: 22 },
+    { values: [currentStats.rows[0]?.[1] ?? "", currentStats.rows[1]?.[1] ?? "", "", currentStats.rows[2]?.[1] ?? "", "", ""], style: 3, height: 24 },
+    { values: [], style: 0 },
+    { values: [monthlyStats.title, "", "", "", "", ""], style: 5, height: 22 },
+    { values: [monthlyStats.headers[0], monthlyStats.headers[1], "", monthlyStats.headers[2], "", ""], style: 2, height: 22 },
+    ...monthlyStats.rows.map((row) => ({ values: [row[0], row[1], "", row[2], "", ""], style: 0, height: 22 })),
+  ];
 
-  const sheetRows = rows
-    .map((row, rowIndex) => {
-      const cells = row
-        .map((value, columnIndex) => {
-          const ref = `${columnName(columnIndex + 1)}${rowIndex + 1}`;
-          return `<c r="${ref}" t="inlineStr"><is><t>${escapeXml(value)}</t></is></c>`;
-        })
-        .join("");
-      return `<row r="${rowIndex + 1}">${cells}</row>`;
-    })
-    .join("");
+  const sheetRows = rows.map((row, rowIndex) => xlsxRow(row.values, rowIndex, row.style, row.height)).join("");
+  const merges = [
+    "A1:F1",
+    "A3:B3",
+    "D3:E3",
+    "A10:F10",
+    "A14:F14",
+    "D11:E11",
+    "D12:E12",
+    "D15:E15",
+    ...monthlyStats.rows.map((_, index) => `D${16 + index}:E${16 + index}`),
+  ];
 
   const worksheet = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <sheetViews><sheetView workbookViewId="0" showGridLines="0"/></sheetViews>
+  <sheetFormatPr defaultRowHeight="18"/>
+  <cols>
+    <col min="1" max="1" width="24" customWidth="1"/>
+    <col min="2" max="2" width="34" customWidth="1"/>
+    <col min="3" max="3" width="4" customWidth="1"/>
+    <col min="4" max="4" width="24" customWidth="1"/>
+    <col min="5" max="5" width="22" customWidth="1"/>
+    <col min="6" max="6" width="4" customWidth="1"/>
+  </cols>
   <sheetData>${sheetRows}</sheetData>
+  <mergeCells count="${merges.length}">${merges.map((ref) => `<mergeCell ref="${ref}"/>`).join("")}</mergeCells>
 </worksheet>`;
 
-  return zipStore({
-    "[Content_Types].xml": `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
-  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
-  <Default Extension="xml" ContentType="application/xml"/>
-  <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
-  <Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
-</Types>`,
-    "_rels/.rels": `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
-</Relationships>`,
-    "xl/workbook.xml": `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
-  <sheets><sheet name="Карточка" sheetId="1" r:id="rId1"/></sheets>
-</workbook>`,
-    "xl/_rels/workbook.xml.rels": `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>
-</Relationships>`,
-    "xl/worksheets/sheet1.xml": worksheet,
-  });
+  return buildXlsxPackage("Карточка", worksheet);
 }
 
 function buildEmployeeDocx(payload) {
-  const sections = payload.sections
-    .map((section) => {
-      const header = section.headers ? `<w:tr>${section.headers.map((cell) => docxCell(cell)).join("")}</w:tr>` : "";
-      const rows = section.rows.map((row) => `<w:tr>${row.map((cell) => docxCell(cell)).join("")}</w:tr>`).join("");
-      return `<w:p><w:r><w:t>${escapeXml(section.title)}</w:t></w:r></w:p><w:tbl>${header}${rows}</w:tbl>`;
-    })
+  const [employeeInfo, timeoff, currentStats, monthlyStats] = payload.sections;
+  const twoColumnGrid = [2800, 5800];
+  const statGrid = [2866, 2866, 2868];
+  const infoRows = employeeInfo.rows
+    .map((row) => `<w:tr>${docxCell(row[0], { width: twoColumnGrid[0], header: true, size: 20 })}${docxCell(row[1], { width: twoColumnGrid[1], size: 20 })}</w:tr>`)
+    .join("");
+  const timeoffRows = timeoff.rows
+    .map((row) => `<w:tr>${docxCell(row[0], { width: twoColumnGrid[0], header: true, size: 20 })}${docxCell(row[1], { width: twoColumnGrid[1], size: 20 })}</w:tr>`)
+    .join("");
+  const currentHeader = `<w:tr>${currentStats.rows.map((row) => docxCell(row[0], { width: statGrid[0], header: true, align: "center", size: 20 })).join("")}</w:tr>`;
+  const currentValues = `<w:tr>${currentStats.rows.map((row) => docxCell(row[1], { width: statGrid[0], align: "center", size: 22 })).join("")}</w:tr>`;
+  const monthGrid = [3600, 2500, 2500];
+  const monthHeader = `<w:tr>${monthlyStats.headers.map((cell, index) => docxCell(cell, { width: monthGrid[index], header: true, align: "center", size: 20 })).join("")}</w:tr>`;
+  const monthRows = monthlyStats.rows
+    .map((row) => `<w:tr>${row.map((cell, index) => docxCell(cell, { width: monthGrid[index], align: index === 0 ? "left" : "center", size: 19 })).join("")}</w:tr>`)
     .join("");
 
   return zipStore({
@@ -308,18 +360,71 @@ function buildEmployeeDocx(payload) {
     "word/document.xml": `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
   <w:body>
-    <w:p><w:r><w:t>${escapeXml(payload.title)}</w:t></w:r></w:p>
-    ${sections}
-    <w:sectPr><w:pgSz w:w="11906" w:h="16838"/></w:sectPr>
+    ${docxParagraph(payload.title, true, 28, "center")}
+    ${docxParagraph(employeeInfo.title, true, 22, "center")}
+    <w:tbl>${docxTableProperties("fixed", twoColumnGrid)}${infoRows}</w:tbl>
+    ${docxParagraph(timeoff.title, true, 22, "center")}
+    <w:tbl>${docxTableProperties("fixed", twoColumnGrid)}${timeoffRows}</w:tbl>
+    ${docxParagraph(currentStats.title, true, 22, "center")}
+    <w:tbl>${docxTableProperties("fixed", statGrid)}${currentHeader}${currentValues}</w:tbl>
+    ${docxParagraph(monthlyStats.title, true, 22, "center")}
+    <w:tbl>${docxTableProperties("fixed", monthGrid)}${monthHeader}${monthRows}</w:tbl>
+    <w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="720" w:right="720" w:bottom="720" w:left="720" w:header="0" w:footer="0" w:gutter="0"/></w:sectPr>
   </w:body>
 </w:document>`,
   });
 }
 
-function docxCell(value) {
+function xlsxRow(values, rowIndex, rowStyle = 0, height = 20) {
+  const cells = values
+    .map((value, columnIndex) => {
+      const ref = `${columnName(columnIndex + 1)}${rowIndex + 1}`;
+      const style = columnIndex < 2 && rowStyle === 0 ? 4 : rowStyle || 3;
+      return `<c r="${ref}" s="${style}" t="inlineStr"><is><t>${escapeXml(value)}</t></is></c>`;
+    })
+    .join("");
+  return `<row r="${rowIndex + 1}" ht="${height}" customHeight="1">${cells}</row>`;
+}
+
+function xlsxStyles() {
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <fonts count="3"><font><sz val="10"/><name val="Arial"/></font><font><b/><sz val="14"/><name val="Arial"/></font><font><b/><sz val="10"/><name val="Arial"/></font></fonts>
+  <fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FFEFF6F4"/><bgColor indexed="64"/></patternFill></fill></fills>
+  <borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border><border><left style="thin"><color rgb="FFB8C3D1"/></left><right style="thin"><color rgb="FFB8C3D1"/></right><top style="thin"><color rgb="FFB8C3D1"/></top><bottom style="thin"><color rgb="FFB8C3D1"/></bottom><diagonal/></border></borders>
+  <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
+  <cellXfs count="6">
+    <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
+    <xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/>
+    <xf numFmtId="0" fontId="2" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>
+    <xf numFmtId="0" fontId="2" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>
+    <xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment vertical="center" wrapText="1"/></xf>
+    <xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1"/>
+  </cellXfs>
+</styleSheet>`;
+}
+
+function docxParagraph(value, bold = false, size = 20, align = "") {
+  const paragraphProps = align ? `<w:pPr><w:jc w:val="${align}"/></w:pPr>` : "";
+  return `<w:p>${paragraphProps}<w:r><w:rPr>${bold ? "<w:b/>" : ""}<w:sz w:val="${size}"/></w:rPr><w:t>${escapeXml(value)}</w:t></w:r></w:p>`;
+}
+
+function docxTableProperties(layout = "auto", grid = []) {
+  const tableWidth = grid.reduce((sum, width) => sum + width, 0);
+  const gridXml = grid.length ? `<w:tblGrid>${grid.map((width) => `<w:gridCol w:w="${width}"/>`).join("")}</w:tblGrid>` : "";
+  return `<w:tblPr><w:tblLayout w:type="${layout}"/><w:jc w:val="center"/><w:tblW w:w="${tableWidth || 0}" w:type="${grid.length ? "dxa" : "auto"}"/><w:tblBorders><w:top w:val="single" w:sz="4" w:color="B8C3D1"/><w:left w:val="single" w:sz="4" w:color="B8C3D1"/><w:bottom w:val="single" w:sz="4" w:color="B8C3D1"/><w:right w:val="single" w:sz="4" w:color="B8C3D1"/><w:insideH w:val="single" w:sz="4" w:color="B8C3D1"/><w:insideV w:val="single" w:sz="4" w:color="B8C3D1"/></w:tblBorders><w:tblCellMar><w:top w:w="45" w:type="dxa"/><w:left w:w="35" w:type="dxa"/><w:bottom w:w="45" w:type="dxa"/><w:right w:w="35" w:type="dxa"/></w:tblCellMar></w:tblPr>${gridXml}`;
+}
+
+function docxCell(value, options = {}) {
   const lines = String(value ?? "").split("\n");
-  return `<w:tc><w:p>${lines
-    .map((line, index) => `<w:r>${index ? "<w:br/>" : ""}<w:t>${escapeXml(line)}</w:t></w:r>`)
+  const shading = options.header ? '<w:shd w:fill="EFF6F4"/>' : "";
+  const width = options.width ? `<w:tcW w:w="${options.width}" w:type="dxa"/>` : "";
+  const noWrap = options.noWrap ? "<w:noWrap/>" : "";
+  const align = options.align ? `<w:jc w:val="${options.align}"/>` : "";
+  const bold = options.header ? "<w:b/>" : "";
+  const size = options.size ?? 18;
+  return `<w:tc><w:tcPr>${width}${shading}${noWrap}</w:tcPr><w:p><w:pPr>${align}</w:pPr>${lines
+    .map((line, index) => `<w:r><w:rPr>${bold}<w:sz w:val="${size}"/></w:rPr>${index ? "<w:br/>" : ""}<w:t>${escapeXml(line)}</w:t></w:r>`)
     .join("")}</w:p></w:tc>`;
 }
 

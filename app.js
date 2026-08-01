@@ -10,6 +10,8 @@ const SUPABASE = {
   employeesTable: "employees",
 };
 
+const DEFAULT_EMPLOYEE_PHOTO = "assets/logo.ico";
+
 const DEFAULT_POSITIONS = [
   "электромонтер",
   "сварщик",
@@ -53,7 +55,6 @@ const defaultEmployees = [
     firstName: "Иван",
     middleName: "Петрович",
     role: "электромонтер",
-    number: "ГНГС-0001",
     phone: "+7 999 100-00-01",
     start: "10.01.2021",
     timeoffBalance: 24,
@@ -66,7 +67,6 @@ const defaultEmployees = [
     firstName: "Петр",
     middleName: "Иванович",
     role: "сварщик",
-    number: "ГНГС-0002",
     phone: "+7 999 100-00-02",
     start: "14.02.2021",
     timeoffBalance: 16,
@@ -79,7 +79,6 @@ const defaultEmployees = [
     firstName: "Сергей",
     middleName: "Николаевич",
     role: "токарь",
-    number: "ГНГС-0003",
     phone: "+7 999 100-00-03",
     start: "03.03.2021",
     timeoffBalance: 8,
@@ -92,7 +91,6 @@ const defaultEmployees = [
     firstName: "Алексей",
     middleName: "Викторович",
     role: "фрезеровщик",
-    number: "ГНГС-0004",
     phone: "+7 999 100-00-04",
     start: "18.04.2021",
     timeoffBalance: 24,
@@ -105,7 +103,6 @@ const defaultEmployees = [
     firstName: "Дмитрий",
     middleName: "Сергеевич",
     role: "обмотчик",
-    number: "ГНГС-0005",
     phone: "+7 999 100-00-05",
     start: "25.05.2021",
     timeoffBalance: 16,
@@ -118,7 +115,6 @@ const defaultEmployees = [
     firstName: "Андрей",
     middleName: "Павлович",
     role: "трансформаторщик",
-    number: "ГНГС-0006",
     phone: "+7 999 100-00-06",
     start: "09.06.2021",
     timeoffBalance: 24,
@@ -131,7 +127,6 @@ const defaultEmployees = [
     firstName: "Михаил",
     middleName: "Андреевич",
     role: "пропитчик",
-    number: "ГНГС-0007",
     phone: "+7 999 100-00-07",
     start: "12.07.2021",
     timeoffBalance: 8,
@@ -144,7 +139,6 @@ const defaultEmployees = [
     firstName: "Николай",
     middleName: "Иванович",
     role: "электромонтер",
-    number: "ГНГС-0008",
     phone: "+7 999 100-00-08",
     start: "16.08.2021",
     timeoffBalance: 16,
@@ -157,7 +151,6 @@ const defaultEmployees = [
     firstName: "Артем",
     middleName: "Олегович",
     role: "сварщик",
-    number: "ГНГС-0009",
     phone: "+7 999 100-00-09",
     start: "20.09.2021",
     timeoffBalance: 24,
@@ -170,7 +163,6 @@ const defaultEmployees = [
     firstName: "Павел",
     middleName: "Дмитриевич",
     role: "токарь",
-    number: "ГНГС-0010",
     phone: "+7 999 100-00-10",
     start: "11.10.2021",
     timeoffBalance: 8,
@@ -183,7 +175,6 @@ const defaultEmployees = [
     firstName: "Илья",
     middleName: "Сергеевич",
     role: "фрезеровщик",
-    number: "ГНГС-0011",
     phone: "+7 999 100-00-11",
     start: "02.11.2021",
     timeoffBalance: 16,
@@ -196,7 +187,6 @@ const defaultEmployees = [
     firstName: "Максим",
     middleName: "Павлович",
     role: "обмотчик",
-    number: "ГНГС-0012",
     phone: "+7 999 100-00-12",
     start: "13.12.2021",
     timeoffBalance: 24,
@@ -209,7 +199,6 @@ const defaultEmployees = [
     firstName: "Кирилл",
     middleName: "Андреевич",
     role: "трансформаторщик",
-    number: "ГНГС-0013",
     phone: "+7 999 100-00-13",
     start: "17.01.2022",
     timeoffBalance: 8,
@@ -222,7 +211,6 @@ const defaultEmployees = [
     firstName: "Денис",
     middleName: "Игоревич",
     role: "пропитчик",
-    number: "ГНГС-0014",
     phone: "+7 999 100-00-14",
     start: "21.02.2022",
     timeoffBalance: 16,
@@ -235,7 +223,6 @@ const defaultEmployees = [
     firstName: "Роман",
     middleName: "Викторович",
     role: "электромонтер",
-    number: "ГНГС-0015",
     phone: "+7 999 100-00-15",
     start: "07.03.2022",
     timeoffBalance: 24,
@@ -248,7 +235,6 @@ const defaultEmployees = [
     firstName: "Антон",
     middleName: "Сергеевич",
     role: "сварщик",
-    number: "ГНГС-0016",
     phone: "+7 999 100-00-16",
     start: "15.04.2022",
     timeoffBalance: 8,
@@ -261,7 +247,6 @@ const defaultEmployees = [
     firstName: "Виктор",
     middleName: "Иванович",
     role: "токарь",
-    number: "ГНГС-0017",
     phone: "+7 999 100-00-17",
     start: "19.05.2022",
     timeoffBalance: 16,
@@ -274,7 +259,6 @@ const defaultEmployees = [
     firstName: "Олег",
     middleName: "Николаевич",
     role: "Начальник участка",
-    number: "ГНГС-0018",
     phone: "+7 999 100-00-18",
     start: "23.06.2022",
     timeoffBalance: 24,
@@ -287,7 +271,6 @@ const defaultEmployees = [
     firstName: "Евгений",
     middleName: "Петрович",
     role: "Мастер",
-    number: "ГНГС-0019",
     phone: "+7 999 100-00-19",
     start: "27.07.2022",
     timeoffBalance: 8,
@@ -300,7 +283,6 @@ const defaultEmployees = [
     firstName: "Александр",
     middleName: "Олегович",
     role: "Начальник цеха",
-    number: "ГНГС-0020",
     phone: "+7 999 100-00-20",
     start: "31.08.2022",
     timeoffBalance: 16,
@@ -432,6 +414,8 @@ function bindEvents() {
   document.querySelector("#cancelEmployeeForm").addEventListener("click", closeEmployeeModal);
   employeeModalOverlay.addEventListener("click", closeEmployeeModal);
   employeeForm.addEventListener("submit", addEmployee);
+  bindPhoneInput("#newEmployeePhone");
+  bindPhoneInput("#editEmployeePhone");
   document.querySelector("#printTimesheet").addEventListener("click", printTimesheet);
   document.querySelector("#exportExcel").addEventListener("click", exportExcel);
   document.querySelector("#exportDocx").addEventListener("click", exportDocx);
@@ -552,13 +536,11 @@ async function syncAppInfo() {
     const info = await window.gngsApi.getAppInfo();
     const versionNode = document.querySelector("#appVersion");
     const startupNode = document.querySelector("#appStartupInfo");
-    const dataNode = document.querySelector("#appDataInfo");
     const updateNode = document.querySelector("#appUpdateInfo");
     const startupInput = document.querySelector("#settingLaunchAtLogin");
     if (versionNode) versionNode.textContent = info.version ?? "1.0.0";
-    if (dataNode) dataNode.textContent = SUPABASE.url ? "Сотрудники в Supabase, табель и настройки локально" : "Все данные хранятся локально";
     if (startupNode) startupNode.textContent = info.launchAtLogin ? "Включен" : "Выключен";
-    if (updateNode && !state.updateStatus) updateNode.textContent = info.isPackaged ? "GitHub Releases" : "Доступно после установки";
+    if (updateNode && !state.updateStatus) updateNode.textContent = info.isPackaged ? "Готово к проверке" : "Работает после установки";
     if (startupInput) startupInput.checked = Boolean(info.launchAtLogin);
   } catch (error) {
     console.warn("App info skipped:", error.message);
@@ -587,7 +569,7 @@ function handleUpdateStatus(payload) {
   state.updateStatus = payload;
   const updateNode = document.querySelector("#appUpdateInfo");
   const installButton = document.querySelector("#installUpdateButton");
-  if (updateNode) updateNode.textContent = payload?.message ?? "GitHub Releases";
+  if (updateNode) updateNode.textContent = payload?.message ?? "Готово к проверке";
   if (installButton) installButton.hidden = payload?.status !== "downloaded";
 }
 
@@ -715,8 +697,7 @@ async function addEmployee(event) {
     middleName,
     role: document.querySelector("#newEmployeeRole").value,
     grade: document.querySelector("#newEmployeeGrade").value.trim() || defaultGrade(document.querySelector("#newEmployeeRole").value),
-    number: nextEmployeeNumber(),
-    phone: document.querySelector("#newEmployeePhone").value.trim() || "-",
+    phone: normalizedPhoneValue("#newEmployeePhone"),
     start: new Date().toLocaleDateString("ru-RU"),
     timeoffBalance: daysToHours(readNumberInput("#newEmployeeTimeoffBalance")),
     status: "Активен",
@@ -784,7 +765,7 @@ function emptyEmployeesState(title, text = "Добавьте первого со
       </div>
       <strong>${escapeHtml(title)}</strong>
       <span>${escapeHtml(text)}</span>
-      ${showButton ? `<button type="button" class="text-button primary-action" data-empty-add-employee>Добавить сотрудника</button>` : ""}
+      ${showButton ? `<button type="button" class="text-button primary-action" data-empty-add-employee><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7a4 4 0 1 0 8 0a4 4 0 0 0-8 0" /><path d="M3 21v-2a4 4 0 0 1 4-4h4" /><path d="M16 19h6" /><path d="M19 16v6" /></svg><span>Добавить сотрудника</span></button>` : ""}
     </div>
   `;
 }
@@ -914,9 +895,8 @@ function renderEmployeesList() {
   const usedTimeoff = timeoffUsed(selectedEmployee.id);
   const dutyEarnedTimeoff = dutyTimeoffEarned(selectedEmployee.id);
   const leftTimeoff = Math.max(0, timeoffBalance(selectedEmployee) - usedTimeoff);
-  const timeoffPlan = employeeTimeoffPlan(selectedEmployee);
   const stats = employeeMonthStats(selectedEmployee.id);
-  const monthlyRows = employeeMonthlyBreakdown(selectedEmployee.id, 6)
+  const monthlyRows = employeeMonthlyBreakdown(selectedEmployee.id)
     .map(
       (row) => `
         <tr>
@@ -927,9 +907,7 @@ function renderEmployeesList() {
       `
     )
     .join("");
-  const photo = selectedEmployee.photo
-    ? `<img src="${escapeHtml(selectedEmployee.photo)}" alt="${escapeHtml(fullName(selectedEmployee))}">`
-    : `<span>${initials(fullName(selectedEmployee))}</span>`;
+  const photo = employeeAvatar(selectedEmployee);
 
   employeesList.innerHTML = `
     <div class="employee-directory">
@@ -944,7 +922,7 @@ function renderEmployeesList() {
                 <span class="employee-row-avatar">${employeeAvatar(employee)}</span>
                 <span class="employee-row-main">
                   <strong>${escapeHtml(fullName(employee))}</strong>
-                  <small>${escapeHtml(employee.role)} · ${escapeHtml(employee.number)}</small>
+                  <small>${escapeHtml(employee.role)}</small>
                 </span>
               </button>
             `
@@ -983,10 +961,24 @@ function renderEmployeesList() {
           <p>${escapeHtml(selectedEmployee.role)}</p>
         </div>
         <div class="employee-detail-actions">
-          <button type="button" class="secondary-button compact" data-open-profile>Редактировать</button>
-          <button type="button" class="secondary-button compact" data-print-employee>Печать</button>
-          <button type="button" class="secondary-button compact" data-export-employee-excel>Excel</button>
-          <button type="button" class="secondary-button compact" data-export-employee-docx>DOCX</button>
+          <button type="button" class="employee-edit-button" data-open-profile>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" /></svg>
+            <span>Редактировать</span>
+          </button>
+          <div class="employee-export-actions" aria-label="Экспорт карточки">
+            <button type="button" class="secondary-button compact" data-print-employee>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9V2h12v7" /><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><path d="M6 14h12v8H6z" /></svg>
+              <span>Печать</span>
+            </button>
+            <button type="button" class="secondary-button compact" data-export-employee-excel>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v16H4z" /><path d="M4 10h16" /><path d="M10 4v16" /><path d="M14 14l3 3" /><path d="M17 14l-3 3" /></svg>
+              <span>Excel</span>
+            </button>
+            <button type="button" class="secondary-button compact" data-export-employee-docx>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 2h9l5 5v15H6z" /><path d="M14 2v6h6" /><path d="M9 13h8" /><path d="M9 17h5" /></svg>
+              <span>DOCX</span>
+            </button>
+          </div>
         </div>
       </header>
 
@@ -994,7 +986,6 @@ function renderEmployeesList() {
         <section class="employee-info-panel">
           <h4>Данные сотрудника</h4>
           <dl class="employee-info-list">
-            <div><dt>Табельный номер</dt><dd>${escapeHtml(selectedEmployee.number)}</dd></div>
             <div><dt>Телефон</dt><dd>${escapeHtml(selectedEmployee.phone)}</dd></div>
             <div><dt>Дата приема</dt><dd>${escapeHtml(selectedEmployee.start)}</dd></div>
             <div><dt>Разряд</dt><dd>${escapeHtml(selectedEmployee.grade)}</dd></div>
@@ -1027,9 +1018,6 @@ function renderEmployeesList() {
                 <strong>${formatHours(hoursToDays(usedTimeoff))} дн.</strong>
                 <small>${formatHours(usedTimeoff)} ч.</small>
               </div>
-            </div>
-            <div class="timeoff-note">
-              ${escapeHtml(timeoffPlan)}
             </div>
           </div>
         </section>
@@ -1127,12 +1115,10 @@ function employeeMonthStats(employeeId) {
   );
 }
 
-function employeeMonthlyBreakdown(employeeId, monthsCount) {
+function employeeMonthlyBreakdown(employeeId) {
   const rows = [];
-  for (let index = 0; index < monthsCount; index += 1) {
-    const date = new Date(state.visibleDate.getFullYear(), state.visibleDate.getMonth() - index, 1);
-    const year = date.getFullYear();
-    const month = date.getMonth();
+  const year = state.visibleDate.getFullYear();
+  for (let month = 0; month < 12; month += 1) {
     const stats = Object.entries(state.attendance[employeeId] ?? {}).reduce(
       (total, [key, value]) => {
         const entryDate = parseDateKey(key);
@@ -1154,6 +1140,44 @@ function employeeMonthlyBreakdown(employeeId, monthsCount) {
     });
   }
   return rows;
+}
+
+function bindPhoneInput(selector) {
+  const input = document.querySelector(selector);
+  if (!input) return;
+  input.addEventListener("focus", () => {
+    if (!input.value.trim()) input.value = "+7 ";
+  });
+  input.addEventListener("input", () => {
+    input.value = formatRussianPhone(input.value);
+  });
+  input.addEventListener("blur", () => {
+    input.value = normalizedPhoneValue(selector) === "-" ? "" : normalizedPhoneValue(selector);
+  });
+}
+
+function normalizedPhoneValue(selector) {
+  const input = document.querySelector(selector);
+  const value = formatRussianPhone(input?.value ?? "");
+  return phoneDigits(value).length === 0 ? "-" : value;
+}
+
+function formatRussianPhone(value) {
+  const digits = phoneDigits(value).slice(0, 10);
+  if (!digits) return "";
+  const parts = ["+7"];
+  parts.push(` ${digits.slice(0, 3)}`);
+  if (digits.length > 3) parts.push(` ${digits.slice(3, 6)}`);
+  if (digits.length > 6) parts.push(`-${digits.slice(6, 8)}`);
+  if (digits.length > 8) parts.push(`-${digits.slice(8, 10)}`);
+  return parts.join("");
+}
+
+function phoneDigits(value) {
+  let digits = String(value).replace(/\D/g, "");
+  if (digits.startsWith("8")) digits = digits.slice(1);
+  if (digits.startsWith("7")) digits = digits.slice(1);
+  return digits;
 }
 
 function saveEmployeePhoto(event) {
@@ -1525,7 +1549,7 @@ function buildEmployeeReportPayload() {
   const dutyEarned = dutyTimeoffEarned(employee.id);
   const leftTimeoff = Math.max(0, timeoffBalance(employee) - usedTimeoff);
   const stats = employeeMonthStats(employee.id);
-  const monthRows = employeeMonthlyBreakdown(employee.id, 6).map((row) => [
+  const monthRows = employeeMonthlyBreakdown(employee.id).map((row) => [
     row.month,
     `${formatHours(row.workHours)} ч.`,
     `${row.dutyDays}`,
@@ -1542,7 +1566,6 @@ function buildEmployeeReportPayload() {
           ["ФИО", fullName(employee)],
           ["Должность", employee.role],
           ["Разряд", employee.grade],
-          ["Табельный номер", employee.number],
           ["Телефон", employee.phone],
           ["Дата приема", employee.start],
         ],
@@ -1554,7 +1577,6 @@ function buildEmployeeReportPayload() {
           ["Начислено за дежурства", `${formatHours(hoursToDays(dutyEarned))} дн. / ${formatHours(dutyEarned)} ч.`],
           ["Использовано", `${formatHours(hoursToDays(usedTimeoff))} дн. / ${formatHours(usedTimeoff)} ч.`],
           ["Доступно сейчас", `${formatHours(hoursToDays(leftTimeoff))} дн. / ${formatHours(leftTimeoff)} ч.`],
-          ["Пояснение", employeeTimeoffPlan(employee)],
         ],
       },
       {
@@ -1572,20 +1594,6 @@ function buildEmployeeReportPayload() {
       },
     ],
   };
-}
-
-function employeeTimeoffPlan(employee) {
-  const used = timeoffUsed(employee.id);
-  const accrued = timeoffBalance(employee);
-  const left = Math.max(0, accrued - used);
-  if (left > 0) {
-    return `Можно поставить еще ${formatHours(hoursToDays(left))} дн. (${formatHours(left)} ч.) отгула.`;
-  }
-  if (used > accrued) {
-    const over = used - accrued;
-    return `Лимит превышен на ${formatHours(hoursToDays(over))} дн. (${formatHours(over)} ч.).`;
-  }
-  return "Все начисленные отгулы уже использованы.";
 }
 
 function buildPrintHtml(payload) {
@@ -1684,7 +1692,6 @@ function renderProfile() {
     document.querySelector("#profileAvatar").textContent = "";
     document.querySelector("#profileName").textContent = "Сотрудник не выбран";
     document.querySelector("#profileRole").textContent = "";
-    document.querySelector("#profileNumber").textContent = "-";
     document.querySelector("#profilePhone").textContent = "-";
     document.querySelector("#profileStart").textContent = "-";
     document.querySelector("#profileGrade").textContent = "-";
@@ -1699,7 +1706,6 @@ function renderProfile() {
   document.querySelector("#profileAvatar").innerHTML = employeeAvatar(employee);
   document.querySelector("#profileName").textContent = fullName(employee);
   document.querySelector("#profileRole").textContent = employee.role;
-  document.querySelector("#profileNumber").textContent = employee.number;
   document.querySelector("#profilePhone").textContent = employee.phone;
   document.querySelector("#profileStart").textContent = employee.start;
   document.querySelector("#profileGrade").textContent = employee.grade;
@@ -1792,7 +1798,7 @@ async function saveProfileEdit(event) {
   employee.middleName = document.querySelector("#editEmployeeMiddleName").value.trim();
   employee.role = document.querySelector("#editEmployeeRole").value;
   employee.grade = document.querySelector("#editEmployeeGrade").value.trim() || defaultGrade(employee.role);
-  employee.phone = document.querySelector("#editEmployeePhone").value.trim() || "-";
+  employee.phone = normalizedPhoneValue("#editEmployeePhone");
   employee.timeoffBalance = daysToHours(readNumberInput("#editEmployeeTimeoffBalance"));
 
   try {
@@ -1845,7 +1851,7 @@ function closeEmployeeModal() {
 function filteredEmployees() {
   const search = employeeSearch.value.trim().toLowerCase();
   return employees.filter((employee) => {
-    return `${fullName(employee)} ${employee.role} ${employee.number}`.toLowerCase().includes(search);
+    return `${fullName(employee)} ${employee.role}`.toLowerCase().includes(search);
   });
 }
 
@@ -1988,7 +1994,7 @@ function renderDutyFilterDays(days) {
   if (!container) return;
   const selected = new Set(state.dutyFilterDates);
   const trigger = document.querySelector("#openDutyFilter");
-  trigger.textContent = selected.size > 0 ? `Дни: ${selected.size}` : "Дни";
+  trigger.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16" /><path d="M7 12h10" /><path d="M10 18h4" /></svg><span>${selected.size > 0 ? `Дни: ${selected.size}` : "Дни"}</span>`;
   trigger.classList.toggle("is-active", selected.size > 0);
   container.innerHTML = days
     .map((date) => {
@@ -2136,20 +2142,11 @@ function formatHours(hours) {
   return Number.isInteger(hours) ? String(hours) : String(hours).replace(".", ",");
 }
 
-function initials(name) {
-  return name
-    .split(" ")
-    .map((part) => part[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
-}
-
 function employeeAvatar(employee) {
   if (employee?.photo) {
-    return `<img src="${escapeHtml(employee.photo)}" alt="">`;
+    return `<img src="${escapeHtml(employee.photo)}" alt="${escapeHtml(fullName(employee))}">`;
   }
-  return initials(fullName(employee));
+  return `<img class="default-avatar" src="${DEFAULT_EMPLOYEE_PHOTO}" alt="${escapeHtml(fullName(employee))}">`;
 }
 
 function fullName(employee) {
@@ -2160,8 +2157,9 @@ function fullName(employee) {
 function normalizeEmployee(employee) {
   if (employee.lastName && employee.firstName) {
     const middleName = employee.middleName || knownMiddleName(employee.lastName, employee.firstName);
+    const { number, ...employeeData } = employee;
     return {
-      ...employee,
+      ...employeeData,
       role: normalizePosition(employee.role),
       grade: employee.grade || defaultGrade(employee.role),
       middleName,
@@ -2174,8 +2172,9 @@ function normalizeEmployee(employee) {
   const lastName = parts[0] ?? "Сотрудник";
   const firstName = parts[1] ?? "";
   const middleName = parts.slice(2).join(" ") || knownMiddleName(lastName, firstName);
+  const { number, ...employeeData } = employee;
   return {
-    ...employee,
+    ...employeeData,
     lastName,
     firstName,
     middleName,
@@ -2263,7 +2262,6 @@ function withDefaultEmployees(source) {
       firstName: replacement.firstName,
       middleName: replacement.middleName,
       role: replacement.role,
-      number: replacement.number,
       phone: replacement.phone,
       start: replacement.start,
       timeoffBalance: replacement.timeoffBalance,
@@ -2443,14 +2441,6 @@ function saveAttendance() {
 
 function saveSettings() {
   localStorage.setItem(STORAGE_KEYS.settings, JSON.stringify(state.settings));
-}
-
-function nextEmployeeNumber() {
-  const numbers = employees
-    .map((employee) => Number(String(employee.number).replace(/\D/g, "")))
-    .filter(Number.isFinite);
-  const next = numbers.length > 0 ? Math.max(...numbers) + 1 : 1;
-  return `ГНГС-${String(next).padStart(4, "0")}`;
 }
 
 init();
