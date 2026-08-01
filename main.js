@@ -4,6 +4,8 @@ const fs = require("fs");
 const path = require("path");
 
 let mainWindow = null;
+let latestUpdateStatus = { status: "idle", message: "Готово к проверке" };
+let updateCheckTimeout = null;
 const updateFeed = {
   provider: "github",
   owner: "Temowkaaa",
@@ -87,7 +89,16 @@ ipcMain.handle("updates:check", async () => {
     return { status: "dev", message: "Проверка обновлений работает в установленной версии приложения." };
   }
   try {
-    await autoUpdater.checkForUpdates();
+    sendUpdateStatus("checking", "Проверяем обновления...");
+    clearTimeout(updateCheckTimeout);
+    updateCheckTimeout = setTimeout(() => {
+      if (latestUpdateStatus.status === "checking") {
+        sendUpdateStatus("error", "Проверка обновлений заняла слишком много времени. Попробуйте еще раз.");
+      }
+    }, 30000);
+    autoUpdater.checkForUpdates().catch((error) => {
+      sendUpdateStatus("error", updateErrorMessage(error));
+    });
     return { status: "checking", message: "Проверяем обновления..." };
   } catch (error) {
     const message = updateErrorMessage(error);
@@ -120,6 +131,8 @@ function configureAutoUpdater() {
 }
 
 function sendUpdateStatus(status, message) {
+  latestUpdateStatus = { status, message };
+  if (status !== "checking") clearTimeout(updateCheckTimeout);
   mainWindow?.webContents.send("updates:status", { status, message });
 }
 

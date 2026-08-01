@@ -73,6 +73,10 @@ body[data-theme="dark"] *::-webkit-scrollbar-thumb:hover {
   scrollbar-color: color-mix(in srgb, var(--accent) 60%, var(--line)) transparent;
 }
 
+[hidden] {
+  display: none !important;
+}
+
 *::-webkit-scrollbar {
   width: 10px;
   height: 10px;

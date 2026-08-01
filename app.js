@@ -549,16 +549,12 @@ async function syncAppInfo() {
 }
 
 async function checkForUpdates() {
-  const button = document.querySelector("#checkUpdatesButton");
-  button.disabled = true;
   handleUpdateStatus({ status: "checking", message: "Проверяем обновления..." });
   try {
     const result = await window.gngsApi?.checkForUpdates?.();
     if (result?.message) handleUpdateStatus(result);
   } catch (error) {
     handleUpdateStatus({ status: "error", message: `Не удалось проверить обновления: ${error.message}` });
-  } finally {
-    button.disabled = false;
   }
 }
 
@@ -569,9 +565,15 @@ function installUpdate() {
 function handleUpdateStatus(payload) {
   state.updateStatus = payload;
   const updateNode = document.querySelector("#appUpdateInfo");
+  const checkButton = document.querySelector("#checkUpdatesButton");
   const installButton = document.querySelector("#installUpdateButton");
+  const status = payload?.status ?? "idle";
   if (updateNode) updateNode.textContent = payload?.message ?? "Готово к проверке";
-  if (installButton) installButton.hidden = payload?.status !== "downloaded";
+  if (checkButton) checkButton.disabled = ["checking", "available", "downloading"].includes(status);
+  if (installButton) {
+    installButton.hidden = status !== "downloaded";
+    installButton.disabled = status !== "downloaded";
+  }
 }
 
 async function updateLaunchAtLoginSetting(event) {
