@@ -718,7 +718,7 @@ async function addEmployee(event) {
     role: document.querySelector("#newEmployeeRole").value,
     grade: normalizeGradeInput(document.querySelector("#newEmployeeGrade").value),
     phone: normalizedPhoneValue("#newEmployeePhone"),
-    start: new Date().toLocaleDateString("ru-RU"),
+    start: dateInputToRu(document.querySelector("#newEmployeeStart").value) || new Date().toLocaleDateString("ru-RU"),
     timeoffBalance: daysToHours(readNumberInput("#newEmployeeTimeoffBalance")),
     status: "Активен",
     note: "",
@@ -2178,6 +2178,7 @@ function openProfileEdit() {
   document.querySelector("#editEmployeeRole").value = employee.role;
   document.querySelector("#editEmployeeGrade").value = gradeInputValue(employee.grade);
   document.querySelector("#editEmployeePhone").value = employee.phone === "-" ? "" : employee.phone;
+  document.querySelector("#editEmployeeStart").value = ruDateToInput(employee.start);
   document.querySelector("#editEmployeeTimeoffBalance").value = hoursToDays(baseTimeoffBalance(employee));
   renderProfile();
   document.querySelector("#editEmployeeLastName").focus();
@@ -2207,6 +2208,7 @@ async function saveProfileEdit(event) {
   employee.role = document.querySelector("#editEmployeeRole").value;
   employee.grade = normalizeGradeInput(document.querySelector("#editEmployeeGrade").value);
   employee.phone = normalizedPhoneValue("#editEmployeePhone");
+  employee.start = dateInputToRu(document.querySelector("#editEmployeeStart").value) || employee.start;
   employee.timeoffBalance = daysToHours(readNumberInput("#editEmployeeTimeoffBalance"));
 
   try {
@@ -2245,6 +2247,7 @@ function deleteSelectedEmployee() {
 }
 
 function openEmployeeModal() {
+  document.querySelector("#newEmployeeStart").value = dateKey(new Date());
   employeeModal.hidden = false;
   employeeModalOverlay.hidden = false;
   document.querySelector("#newEmployeeLastName").focus();
@@ -2337,6 +2340,21 @@ function parseDateKey(key) {
   const date = new Date(year, month - 1, day);
   if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return null;
   return date;
+}
+
+function ruDateToInput(value) {
+  const match = String(value ?? "").match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+  if (!match) return "";
+  const [, day, month, year] = match;
+  const date = new Date(Number(year), Number(month) - 1, Number(day));
+  if (date.getFullYear() !== Number(year) || date.getMonth() !== Number(month) - 1 || date.getDate() !== Number(day)) return "";
+  return `${year}-${month}-${day}`;
+}
+
+function dateInputToRu(value) {
+  const date = parseDateKey(value);
+  if (!date) return "";
+  return date.toLocaleDateString("ru-RU");
 }
 
 function employeeExperience(value) {
