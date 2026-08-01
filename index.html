@@ -1,0 +1,466 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ГНГС табель учета</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div id="drawerOverlay" class="drawer-overlay" hidden></div>
+    <div id="employeeModalOverlay" class="modal-overlay" hidden></div>
+    <div id="settingsModalOverlay" class="modal-overlay" hidden></div>
+    <div id="employeeModal" class="employee-modal" role="dialog" aria-modal="true" aria-labelledby="employeeModalTitle" hidden>
+      <div class="modal-header">
+        <div>
+          <p class="eyebrow">Новый сотрудник</p>
+          <h2 id="employeeModalTitle">Добавить сотрудника</h2>
+        </div>
+        <button id="closeEmployeeModal" class="icon-button" type="button" aria-label="Закрыть">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M18 6l-12 12" />
+            <path d="M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <form id="employeeForm" class="employee-form">
+        <label>
+          <span>Фамилия</span>
+          <input id="newEmployeeLastName" type="text" placeholder="Иванов" required />
+        </label>
+        <label>
+          <span>Имя</span>
+          <input id="newEmployeeFirstName" type="text" placeholder="Иван" required />
+        </label>
+        <label>
+          <span>Отчество</span>
+          <input id="newEmployeeMiddleName" type="text" placeholder="Иванович" />
+        </label>
+        <label>
+          <span>Должность</span>
+          <select id="newEmployeeRole"></select>
+        </label>
+        <label>
+          <span>Разряд</span>
+          <input id="newEmployeeGrade" type="text" placeholder="4 разряд" />
+        </label>
+        <label>
+          <span>Телефон</span>
+          <input id="newEmployeePhone" type="tel" placeholder="+7 ..." />
+        </label>
+        <label>
+          <span>Отгулы, дней</span>
+          <input id="newEmployeeTimeoffBalance" type="number" min="0" step="0.1" value="0" inputmode="decimal" />
+        </label>
+        <div class="form-actions">
+          <button class="text-button primary-action" type="submit">Сохранить</button>
+          <button id="cancelEmployeeForm" class="text-button" type="button">Отмена</button>
+        </div>
+      </form>
+    </div>
+
+    <div id="settingsModal" class="settings-modal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle" hidden>
+      <div class="modal-header">
+        <div>
+          <p class="eyebrow">Настройки</p>
+          <h2 id="settingsTitle">Вид табеля</h2>
+        </div>
+        <button id="closeSettingsModal" class="icon-button" type="button" aria-label="Закрыть настройки">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M18 6l-12 12" />
+            <path d="M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <div class="settings-form">
+        <div class="settings-column">
+          <div class="settings-section">
+            <h3>Основное</h3>
+            <label class="settings-row">
+              <span>Тема</span>
+              <select id="settingTheme">
+                <option value="light">Светлая</option>
+                <option value="dark">Темная</option>
+              </select>
+            </label>
+
+            <label class="settings-row">
+              <span>Размер шрифта таблицы</span>
+              <input id="settingTableFontSize" type="range" min="10" max="14" step="1" />
+              <strong id="settingTableFontSizeValue">11</strong>
+            </label>
+
+            <label class="settings-row">
+              <span>Плотность строк</span>
+              <select id="settingDensity">
+                <option value="compact">Компактная</option>
+                <option value="normal">Обычная</option>
+                <option value="large">Крупная</option>
+              </select>
+            </label>
+
+            <label class="settings-check">
+              <input id="settingWeekendTint" type="checkbox" />
+              <span>Подсвечивать выходные</span>
+            </label>
+
+            <label class="settings-check">
+              <input id="settingStatusTint" type="checkbox" />
+              <span>Цветной фон заполненных ячеек</span>
+            </label>
+
+            <label class="settings-check">
+              <input id="settingLaunchAtLogin" type="checkbox" />
+              <span>Запускать вместе с Windows</span>
+            </label>
+          </div>
+
+          <div class="settings-section">
+            <h3>Должности</h3>
+            <label class="settings-stack">
+              <span>Одна должность в строке</span>
+              <textarea id="settingPositions" rows="4"></textarea>
+            </label>
+          </div>
+        </div>
+
+        <div class="settings-column">
+          <div class="settings-section">
+            <h3>Варианты посещения</h3>
+            <div class="status-settings-grid">
+              <span>Тип</span>
+              <span>Название</span>
+              <span>Цвет</span>
+
+            <strong>Работа</strong>
+            <input data-status-setting="present" data-field="name" type="text" />
+            <input data-status-setting="present" data-field="color" type="color" />
+
+            <strong>Дежурство</strong>
+            <input data-status-setting="duty" data-field="name" type="text" />
+            <input data-status-setting="duty" data-field="color" type="color" />
+
+            <strong>Неявка</strong>
+            <input data-status-setting="absence" data-field="name" type="text" />
+            <input data-status-setting="absence" data-field="color" type="color" />
+
+            <strong>Отпуск</strong>
+            <input data-status-setting="vacation" data-field="name" type="text" />
+            <input data-status-setting="vacation" data-field="color" type="color" />
+
+            <strong>Отгул</strong>
+            <input data-status-setting="timeoff" data-field="name" type="text" />
+            <input data-status-setting="timeoff" data-field="color" type="color" />
+
+            <strong>Административный</strong>
+            <input data-status-setting="administrative" data-field="name" type="text" />
+            <input data-status-setting="administrative" data-field="color" type="color" />
+
+            <strong>Больничный</strong>
+            <input data-status-setting="sick" data-field="name" type="text" />
+            <input data-status-setting="sick" data-field="color" type="color" />
+            </div>
+          </div>
+
+          <div class="settings-section app-info-section">
+            <h3>О приложении</h3>
+            <dl class="app-info">
+              <div>
+                <dt>Название</dt>
+                <dd>ГНГС табель учета</dd>
+              </div>
+              <div>
+                <dt>Версия</dt>
+                <dd id="appVersion">1.0.0</dd>
+              </div>
+              <div>
+                <dt>Данные</dt>
+                <dd id="appDataInfo">Сотрудники в Supabase, табель и настройки локально</dd>
+              </div>
+              <div>
+                <dt>Автозапуск</dt>
+                <dd id="appStartupInfo">Выключен</dd>
+              </div>
+              <div>
+                <dt>Обновления</dt>
+                <dd id="appUpdateInfo">GitHub Releases</dd>
+              </div>
+            </dl>
+            <div class="app-update-actions">
+              <button id="checkUpdatesButton" class="text-button compact-button" type="button">Проверить обновления</button>
+              <button id="installUpdateButton" class="text-button compact-button primary-action" type="button" hidden>Установить</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <aside id="employeeDrawer" class="employee-drawer" aria-label="Личная карточка сотрудника" aria-hidden="true">
+      <div class="drawer-actions">
+        <button id="editEmployee" class="text-button" type="button">Редактировать</button>
+        <button id="closeDrawer" class="icon-button" type="button" aria-label="Закрыть карточку">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M18 6l-12 12" />
+            <path d="M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <div class="profile-head">
+        <div id="profileAvatar" class="avatar">АИ</div>
+        <div>
+          <p class="eyebrow">Личная карточка</p>
+          <h2 id="profileName">Сотрудник</h2>
+          <p id="profileRole">Должность</p>
+        </div>
+      </div>
+
+      <dl class="profile-details">
+        <div>
+          <dt>Табельный номер</dt>
+          <dd id="profileNumber">-</dd>
+        </div>
+        <div>
+          <dt>Телефон</dt>
+          <dd id="profilePhone">-</dd>
+        </div>
+        <div>
+          <dt>Дата приема</dt>
+          <dd id="profileStart">-</dd>
+        </div>
+        <div>
+          <dt>Разряд</dt>
+          <dd id="profileGrade">-</dd>
+        </div>
+        <div>
+          <dt>Отгулы начислено</dt>
+          <dd class="timeoff-inline-edit">
+            <input id="profileTimeoffBalanceInput" type="text" inputmode="decimal" aria-label="Отгулы начислено в днях" />
+            <span id="profileTimeoffBalanceHours">0 ч.</span>
+          </dd>
+        </div>
+      </dl>
+
+      <form id="profileEditForm" class="profile-edit-form" hidden>
+        <label>
+          <span>Фамилия</span>
+          <input id="editEmployeeLastName" type="text" required />
+        </label>
+        <label>
+          <span>Имя</span>
+          <input id="editEmployeeFirstName" type="text" required />
+        </label>
+        <label>
+          <span>Отчество</span>
+          <input id="editEmployeeMiddleName" type="text" />
+        </label>
+        <label>
+          <span>Должность</span>
+          <select id="editEmployeeRole"></select>
+        </label>
+        <label>
+          <span>Разряд</span>
+          <input id="editEmployeeGrade" type="text" />
+        </label>
+        <label>
+          <span>Телефон</span>
+          <input id="editEmployeePhone" type="tel" />
+        </label>
+        <label>
+          <span>Отгулы, дней</span>
+          <input id="editEmployeeTimeoffBalance" type="number" min="0" step="0.1" inputmode="decimal" />
+        </label>
+        <div class="profile-edit-actions">
+          <button class="text-button primary-action" type="submit">Сохранить</button>
+          <button id="cancelProfileEdit" class="text-button" type="button">Отмена</button>
+        </div>
+      </form>
+
+      <div class="card-divider"></div>
+
+      <div class="mini-summary">
+        <div>
+          <span>Отработано</span>
+          <strong id="workedDays">0 дн.</strong>
+        </div>
+        <div>
+          <span>Часов</span>
+          <strong id="workedHours">0 ч.</strong>
+        </div>
+        <div>
+          <span>Отгулы дни</span>
+          <strong id="timeoffLeftDays">0 дн.</strong>
+        </div>
+        <div>
+          <span>Отгулы часы</span>
+          <strong id="timeoffLeftHours">0 ч.</strong>
+        </div>
+      </div>
+
+      <label class="note-field">
+        <span>Заметка кадровика</span>
+        <textarea id="employeeNote" rows="4"></textarea>
+      </label>
+
+      <button id="deleteEmployee" class="text-button danger-action" type="button">Удалить сотрудника</button>
+    </aside>
+
+    <main class="app">
+      <header class="app-header">
+        <div class="brand">
+          <img src="assets/logo.ico" alt="" class="brand-mark" />
+          <div>
+            <h1>ГНГС табель учета</h1>
+            <p>Ведомость посещения сотрудников</p>
+          </div>
+        </div>
+
+        <nav class="app-tabs" aria-label="Разделы приложения">
+          <button class="tab-button is-active" type="button" data-view-tab="timesheet">Табель</button>
+          <button class="tab-button" type="button" data-view-tab="employees">Сотрудники</button>
+          <button class="tab-button" type="button" data-view-tab="duty">График дежурств</button>
+        </nav>
+
+        <div class="header-actions">
+          <button id="searchButton" class="icon-button search-icon-button" type="button" title="Поиск сотрудников" aria-label="Поиск сотрудников" aria-expanded="false" aria-controls="searchPopover">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M10 10m-7 0a7 7 0 1 0 14 0a7 7 0 1 0 -14 0" />
+              <path d="M21 21l-6 -6" />
+            </svg>
+          </button>
+          <button id="toggleEmployeeForm" class="icon-button primary-icon" type="button" title="Добавить сотрудника" aria-label="Добавить сотрудника">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M5 7a4 4 0 1 0 8 0a4 4 0 0 0 -8 0" />
+              <path d="M3 21v-2a4 4 0 0 1 4 -4h4c.96 0 1.84 .338 2.53 .901" />
+              <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+              <path d="M16 19h6" />
+              <path d="M19 16v6" />
+            </svg>
+          </button>
+          <button id="settingsButton" class="icon-button theme-button" type="button" title="Настройки" aria-label="Настройки">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M10.325 4.317c.426 -1.756 2.924 -1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543 -.94 3.31 .826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756 .426 1.756 2.924 0 3.35a1.724 1.724 0 0 0 -1.066 2.573c.94 1.543 -.826 3.31 -2.37 2.37a1.724 1.724 0 0 0 -2.572 1.065c-.426 1.756 -2.924 1.756 -3.35 0a1.724 1.724 0 0 0 -2.573 -1.066c-1.543 .94 -3.31 -.826 -2.37 -2.37a1.724 1.724 0 0 0 -1.065 -2.572c-1.756 -.426 -1.756 -2.924 0 -3.35a1.724 1.724 0 0 0 1.066 -2.573c-.94 -1.543 .826 -3.31 2.37 -2.37c1 .608 2.296 .07 2.572 -1.065" />
+              <path d="M9 12a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" />
+            </svg>
+          </button>
+          <div id="searchPopover" class="search-popover" hidden>
+            <label class="search">
+              <span aria-hidden="true">⌕</span>
+              <input id="employeeSearch" type="search" placeholder="Поиск по ФИО, должности или номеру" />
+            </label>
+          </div>
+        </div>
+      </header>
+
+      <section class="controls-panel" aria-label="Настройки табеля">
+        <div class="month-summary">
+          <p class="eyebrow">Табель за месяц</p>
+          <div class="month-title-row">
+            <h2 id="pageTitle">Июль 2026</h2>
+            <div class="month-controls" aria-label="Переключение месяца">
+              <button id="prevMonth" class="icon-button" type="button" title="Предыдущий месяц" aria-label="Предыдущий месяц">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M15 6l-6 6l6 6" />
+                </svg>
+              </button>
+              <button id="todayButton" class="text-button compact-button" type="button">Текущий месяц</button>
+              <button id="nextMonth" class="icon-button" type="button" title="Следующий месяц" aria-label="Следующий месяц">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M9 6l6 6l-6 6" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div id="statusLegend" class="status-legend" aria-label="Условные обозначения">
+          <span><i class="dot present"></i>Работа</span>
+          <span><i class="dot duty"></i>Дежурство</span>
+          <span><i class="dot absence"></i>Неявка</span>
+          <span><i class="dot vacation"></i>Отпуск</span>
+          <span><i class="dot timeoff"></i>Отгул</span>
+          <span><i class="dot administrative"></i>Административный</span>
+          <span><i class="dot sick"></i>Больничный</span>
+        </div>
+      </section>
+
+      <section class="timesheet-panel app-view" data-view="timesheet" aria-label="Табель учета посещения">
+        <div class="table-caption">
+          <h3>Табель посещения работы сотрудниками</h3>
+          <div class="export-actions" aria-label="Печать и экспорт">
+            <button id="printTimesheet" class="text-button compact-button" type="button">Печать</button>
+            <button id="exportExcel" class="text-button compact-button" type="button">Excel</button>
+            <button id="exportDocx" class="text-button compact-button" type="button">DOCX</button>
+          </div>
+        </div>
+        <div id="timesheetScroller" class="timesheet-scroller">
+          <table id="timesheetTable" class="timesheet-table"></table>
+        </div>
+      </section>
+
+      <section class="list-panel app-view" data-view="employees" aria-label="Список сотрудников" hidden>
+        <div class="table-caption">
+          <h3>Сотрудники</h3>
+        </div>
+        <div id="employeesList" class="employees-list"></div>
+      </section>
+
+      <section class="timesheet-panel app-view" data-view="duty" aria-label="График дежурств" hidden>
+        <div class="table-caption">
+          <h3>График дежурств</h3>
+          <div class="table-actions duty-actions">
+            <label class="duty-extra-day">
+              <span>Доп. день</span>
+              <input id="dutyExtraDate" type="date" />
+              <button id="addDutyExtraDate" class="text-button compact-button" type="button">+</button>
+            </label>
+            <div id="dutyExtraDays" class="duty-extra-days"></div>
+            <button id="openDutyFilter" class="text-button compact-button duty-filter-trigger" type="button">Дни</button>
+            <button id="printDuty" class="text-button compact-button" type="button">Печать</button>
+            <button id="exportDutyExcel" class="text-button compact-button" type="button">Excel</button>
+            <button id="exportDutyDocx" class="text-button compact-button" type="button">DOCX</button>
+          </div>
+        </div>
+        <div id="dutyScroller" class="timesheet-scroller">
+          <table id="dutyTable" class="timesheet-table duty-table"></table>
+        </div>
+      </section>
+    </main>
+
+    <div id="statusMenu" class="status-menu" hidden>
+      <div class="hours-field">
+        <span>Часы</span>
+        <input id="statusHours" type="number" min="0" max="24" step="0.1" value="8" inputmode="decimal" />
+        <button class="work-button" type="button" data-status="present" title="Поставить рабочие часы">✓</button>
+      </div>
+      <button type="button" data-status="duty"><span class="dot duty"></span>Дежурство</button>
+      <button type="button" data-status="absence"><span class="dot absence"></span>Неявка</button>
+      <button type="button" data-status="vacation"><span class="dot vacation"></span>Отпуск</button>
+      <button type="button" data-status="timeoff"><span class="dot timeoff"></span>Отгул</button>
+      <button type="button" data-status="administrative"><span class="dot administrative"></span>Административный</button>
+      <button type="button" data-status="sick"><span class="dot sick"></span>Больничный</button>
+      <button class="clear-status" type="button" data-status="">Очистить</button>
+    </div>
+
+    <div id="dutyMenu" class="status-menu duty-hours-menu" hidden>
+      <div class="hours-field">
+        <span>Часы</span>
+        <input id="dutyHours" type="number" min="0" max="24" step="0.1" value="8" inputmode="decimal" />
+        <button id="saveDutyHours" class="work-button" type="button" title="Поставить дежурство">✓</button>
+      </div>
+      <button id="clearDutyHours" class="clear-status" type="button">Очистить</button>
+    </div>
+
+    <div id="dutyFilterPopover" class="duty-filter-popover" hidden>
+      <div class="duty-filter-head">
+        <strong>Дни для печати</strong>
+        <button id="clearDutyFilterButton" type="button">Все</button>
+      </div>
+      <div id="dutyFilterDays" class="duty-filter-days"></div>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>

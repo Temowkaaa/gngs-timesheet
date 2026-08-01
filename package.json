@@ -1,0 +1,23 @@
+{
+  "name": "gngs-timesheet",
+  "version": "1.0.0",
+  "description": "ГНГС табель учета",
+  "main": "main.js",
+  "author": "GNGS",
+  "license": "UNLICENSED",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "build": "set CSC_IDENTITY_AUTO_DISCOVERY=false&& electron-builder --config electron-builder.config.js --win nsis --publish never",
+    "build:folder": "electron-packager . \"ГНГС табель учета\" --platform=win32 --arch=x64 --out=release --overwrite --icon=assets/logo.ico --prune=true --ignore=\"^/(dist|release)$\"",
+    "publish": "set CSC_IDENTITY_AUTO_DISCOVERY=false&& electron-builder --config electron-builder.config.js --win nsis --publish always"
+  },
+  "devDependencies": {
+    "electron": "^31.7.7",
+    "electron-builder": "^22.14.13",
+    "electron-packager": "^17.1.2"
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.9"
+  }
+}
