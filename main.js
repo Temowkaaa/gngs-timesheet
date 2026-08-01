@@ -6,6 +6,7 @@ const path = require("path");
 let mainWindow = null;
 let latestUpdateStatus = { status: "idle", message: "Готово к проверке" };
 let updateCheckTimeout = null;
+let updateReadyToInstall = false;
 const updateFeed = {
   provider: "github",
   owner: "Temowkaaa",
@@ -108,7 +109,19 @@ ipcMain.handle("updates:check", async () => {
 });
 
 ipcMain.handle("updates:install", () => {
-  autoUpdater.quitAndInstall(false, true);
+  if (!updateReadyToInstall) {
+    const message = "Обновление еще не скачано. Сначала нажмите проверку и дождитесь готовности к установке.";
+    sendUpdateStatus("error", message);
+    return { status: "error", message };
+  }
+  try {
+    autoUpdater.quitAndInstall(false, true);
+    return { status: "installing", message: "Устанавливаем обновление..." };
+  } catch (error) {
+    const message = updateErrorMessage(error);
+    sendUpdateStatus("error", message);
+    return { status: "error", message };
+  }
 });
 
 function configureAutoUpdater() {
@@ -125,6 +138,7 @@ function configureAutoUpdater() {
     sendUpdateStatus("downloading", `Скачиваем обновление: ${Math.round(progress.percent)}%`);
   });
   autoUpdater.on("update-downloaded", (info) => {
+    updateReadyToInstall = true;
     sendUpdateStatus("downloaded", `Версия ${info.version} скачана. Можно установить.`);
   });
   autoUpdater.on("error", (error) => sendUpdateStatus("error", updateErrorMessage(error)));
@@ -132,6 +146,7 @@ function configureAutoUpdater() {
 
 function sendUpdateStatus(status, message) {
   latestUpdateStatus = { status, message };
+  if (status !== "downloaded" && status !== "installing") updateReadyToInstall = false;
   if (status !== "checking") clearTimeout(updateCheckTimeout);
   mainWindow?.webContents.send("updates:status", { status, message });
 }

@@ -558,8 +558,13 @@ async function checkForUpdates() {
   }
 }
 
-function installUpdate() {
-  window.gngsApi?.installUpdate?.();
+async function installUpdate() {
+  try {
+    const result = await window.gngsApi?.installUpdate?.();
+    if (result?.message) handleUpdateStatus(result);
+  } catch (error) {
+    handleUpdateStatus({ status: "error", message: `Не удалось установить обновление: ${error.message}` });
+  }
 }
 
 function handleUpdateStatus(payload) {
