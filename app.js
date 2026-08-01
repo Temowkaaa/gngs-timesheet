@@ -323,6 +323,8 @@ const state = {
   profileEditing: false,
   activeCell: null,
   dutyFilterDates: [],
+  statisticsMode: "month",
+  statisticsDate: currentMonthDate(),
   updateStatus: null,
   employeesLoading: Boolean(SUPABASE.url && SUPABASE.key),
 };
@@ -332,6 +334,10 @@ const pageTitle = document.querySelector("#pageTitle");
 const timesheetTable = document.querySelector("#timesheetTable");
 const employeesList = document.querySelector("#employeesList");
 const dutyTable = document.querySelector("#dutyTable");
+const statisticsContent = document.querySelector("#statisticsContent");
+const statisticsPeriodMode = document.querySelector("#statisticsPeriodMode");
+const statisticsMonthInput = document.querySelector("#statisticsMonthInput");
+const statisticsYearInput = document.querySelector("#statisticsYearInput");
 const statusLegend = document.querySelector("#statusLegend");
 const employeeNote = document.querySelector("#employeeNote");
 const drawer = document.querySelector("#employeeDrawer");
@@ -423,6 +429,12 @@ function bindEvents() {
   document.querySelector("#printDuty").addEventListener("click", printDutySchedule);
   document.querySelector("#exportDutyExcel").addEventListener("click", exportDutyExcel);
   document.querySelector("#exportDutyDocx").addEventListener("click", exportDutyDocx);
+  statisticsPeriodMode.addEventListener("change", updateStatisticsPeriodMode);
+  statisticsMonthInput.addEventListener("change", updateStatisticsMonth);
+  statisticsYearInput.addEventListener("change", updateStatisticsYear);
+  document.querySelector("#printStatistics").addEventListener("click", printStatisticsReport);
+  document.querySelector("#exportStatisticsExcel").addEventListener("click", exportStatisticsExcel);
+  document.querySelector("#exportStatisticsDocx").addEventListener("click", exportStatisticsDocx);
   document.querySelector("#addDutyExtraDate").addEventListener("click", addDutyExtraDate);
   document.querySelector("#openDutyFilter").addEventListener("click", toggleDutyFilterPopover);
   document.querySelector("#clearDutyFilterButton").addEventListener("click", clearDutyFilter);
@@ -743,6 +755,7 @@ function render() {
   renderTimesheet();
   renderEmployeesList();
   renderDutySchedule();
+  renderStatistics();
   renderProfile();
   renderEmployeeTotals();
   syncDrawer();
@@ -753,7 +766,7 @@ function renderTitle() {
 }
 
 function switchView(view) {
-  if (!["timesheet", "employees", "duty"].includes(view)) return;
+  if (!["timesheet", "employees", "duty", "statistics"].includes(view)) return;
   state.activeView = view;
   closeStatusMenu();
   syncActiveView();
@@ -919,7 +932,6 @@ function renderEmployeesList() {
   const selectedEmployee = employeesToShow.find((employee) => employee.id === state.selectedEmployeeId) ?? employeesToShow[0];
   state.selectedEmployeeId = selectedEmployee.id;
   const usedTimeoff = timeoffUsed(selectedEmployee.id);
-  const dutyEarnedTimeoff = dutyTimeoffEarned(selectedEmployee.id);
   const leftTimeoff = Math.max(0, timeoffBalance(selectedEmployee) - usedTimeoff);
   const stats = employeeMonthStats(selectedEmployee.id);
   const monthlyRows = employeeMonthlyBreakdown(selectedEmployee.id)
@@ -1014,8 +1026,8 @@ function renderEmployeesList() {
           <dl class="employee-info-list">
             <div><dt>Телефон</dt><dd>${escapeHtml(selectedEmployee.phone)}</dd></div>
             <div><dt>Дата приема</dt><dd>${escapeHtml(selectedEmployee.start)}</dd></div>
+            <div><dt>Стаж</dt><dd>${escapeHtml(employeeExperience(selectedEmployee.start))}</dd></div>
             <div><dt>Разряд</dt><dd>${escapeHtml(formatGrade(selectedEmployee.grade))}</dd></div>
-            <div><dt>Статус</dt><dd>${escapeHtml(selectedEmployee.status)}</dd></div>
             <div><dt>Примечание</dt><dd>${escapeHtml(selectedEmployee.note || "Не указано")}</dd></div>
           </dl>
         </section>
@@ -1030,14 +1042,9 @@ function renderEmployeesList() {
             </div>
             <div class="timeoff-flow">
               <div>
-                <span>Вручную</span>
-                <strong>${formatHours(hoursToDays(baseTimeoffBalance(selectedEmployee)))} дн.</strong>
-                <small>${formatHours(baseTimeoffBalance(selectedEmployee))} ч.</small>
-              </div>
-              <div>
-                <span>За дежурства</span>
-                <strong>${formatHours(hoursToDays(dutyEarnedTimeoff))} дн.</strong>
-                <small>${formatHours(dutyEarnedTimeoff)} ч.</small>
+                <span>Всего доступно</span>
+                <strong>${formatHours(hoursToDays(timeoffBalance(selectedEmployee)))} дн.</strong>
+                <small>${formatHours(timeoffBalance(selectedEmployee))} ч.</small>
               </div>
               <div>
                 <span>Использовано</span>
@@ -1106,6 +1113,258 @@ function renderEmployeesList() {
     saveEmployees();
     render();
   });
+}
+
+function renderStatistics() {
+  syncStatisticsControls();
+  if (employees.length === 0) {
+    statisticsContent.innerHTML = state.employeesLoading
+      ? employeesLoadingState("Загружаем статистику...")
+      : emptyEmployeesState("Статистика пока пустая", "Добавьте сотрудников и отметки в табеле, чтобы увидеть аналитику.", true);
+    bindEmptyStateActions(statisticsContent);
+    return;
+  }
+
+  const payload = buildStatisticsPayload();
+  const totals = payload.totals;
+  const summaryCards = [
+    ["Сотрудников", totals.employees],
+    ["Рабочих дней", totals.workDays],
+    ["Часов всего", `${formatHours(totals.workHours)} ч.`],
+    ["Дежурств", totals.dutyDays],
+    ["Отгулов", `${formatHours(hoursToDays(totals.timeoffHours))} дн. / ${formatHours(totals.timeoffHours)} ч.`],
+    ["Админ", totals.administrativeDays],
+  ]
+    .map(([label, value]) => `<div class="statistics-card"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`)
+    .join("");
+
+  const ratingBlocks = [
+    ["Больше всего часов", payload.rankings.workHours, (row) => `${formatHours(row.workHours)} ч.`],
+    ["Больше всего дежурств", payload.rankings.dutyDays, (row) => `${row.dutyDays}`],
+    ["Больше всего отгулов", payload.rankings.timeoffHours, (row) => `${formatHours(hoursToDays(row.timeoffHours))} дн. / ${formatHours(row.timeoffHours)} ч.`],
+    ["Больше всего админов", payload.rankings.administrativeDays, (row) => `${row.administrativeDays}`],
+  ]
+    .map(([title, rows, formatValue]) => renderStatisticsRanking(title, rows, formatValue))
+    .join("");
+
+  const tableRows = payload.rows
+    .map(
+      (row, index) => `
+        <tr>
+          <td>${index + 1}</td>
+          <td><strong>${escapeHtml(row.name)}</strong><br><small>${escapeHtml(row.role)}</small></td>
+          <td>${row.workDays}</td>
+          <td>${formatHours(row.workHours)}</td>
+          <td>${row.dutyDays}</td>
+          <td>${formatHours(hoursToDays(row.timeoffHours))} / ${formatHours(row.timeoffHours)}</td>
+          <td>${row.absenceDays}</td>
+          <td>${row.vacationDays}</td>
+          <td>${row.administrativeDays}</td>
+          <td>${row.sickDays}</td>
+        </tr>
+      `
+    )
+    .join("");
+
+  statisticsContent.innerHTML = `
+    <div class="statistics-summary">${summaryCards}</div>
+    <div class="statistics-rankings">${ratingBlocks}</div>
+    <div class="statistics-table-wrap">
+      <table class="statistics-table">
+        <thead>
+          <tr>
+            <th>№</th>
+            <th>Сотрудник</th>
+            <th>Раб. дни</th>
+            <th>Часы</th>
+            <th>Деж.</th>
+            <th>Отгулы дн./ч.</th>
+            <th>Неявки</th>
+            <th>Отпуск</th>
+            <th>Админ</th>
+            <th>Больничный</th>
+          </tr>
+        </thead>
+        <tbody>${tableRows}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+function renderStatisticsRanking(title, rows, formatValue) {
+  const items = rows.length
+    ? rows
+        .map(
+          (row, index) => `
+            <li>
+              <span>${index + 1}</span>
+              <div><strong>${escapeHtml(row.name)}</strong><small>${escapeHtml(row.role)}</small></div>
+              <b>${escapeHtml(formatValue(row))}</b>
+            </li>
+          `
+        )
+        .join("")
+    : `<li class="empty-ranking">Нет данных за период</li>`;
+  return `
+    <section class="statistics-ranking">
+      <h4>${escapeHtml(title)}</h4>
+      <ol>${items}</ol>
+    </section>
+  `;
+}
+
+function syncStatisticsControls() {
+  const date = state.statisticsDate;
+  statisticsPeriodMode.value = state.statisticsMode;
+  statisticsMonthInput.hidden = state.statisticsMode !== "month";
+  statisticsYearInput.hidden = state.statisticsMode !== "year";
+  statisticsMonthInput.value = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+  statisticsYearInput.value = String(date.getFullYear());
+}
+
+function updateStatisticsPeriodMode(event) {
+  state.statisticsMode = event.target.value === "year" ? "year" : "month";
+  renderStatistics();
+}
+
+function updateStatisticsMonth(event) {
+  const [year, month] = String(event.target.value).split("-").map(Number);
+  if (!year || !month) return;
+  state.statisticsDate = new Date(year, month - 1, 1);
+  renderStatistics();
+}
+
+function updateStatisticsYear(event) {
+  const year = Number(event.target.value);
+  if (!Number.isFinite(year) || year < 2020 || year > 2100) return;
+  state.statisticsDate = new Date(year, state.statisticsDate.getMonth(), 1);
+  renderStatistics();
+}
+
+function buildStatisticsPayload() {
+  const period = statisticsPeriod();
+  const rows = employees
+    .map((employee) => ({
+      id: employee.id,
+      name: fullName(employee),
+      role: employee.role,
+      ...employeePeriodStats(employee.id, period),
+    }))
+    .sort((a, b) => b.workHours - a.workHours || b.workDays - a.workDays || a.name.localeCompare(b.name, "ru"));
+
+  const totals = rows.reduce(
+    (sum, row) => {
+      sum.workDays += row.workDays;
+      sum.workHours += row.workHours;
+      sum.dutyDays += row.dutyDays;
+      sum.timeoffHours += row.timeoffHours;
+      sum.absenceDays += row.absenceDays;
+      sum.vacationDays += row.vacationDays;
+      sum.administrativeDays += row.administrativeDays;
+      sum.sickDays += row.sickDays;
+      return sum;
+    },
+    {
+      employees: employees.length,
+      workDays: 0,
+      workHours: 0,
+      dutyDays: 0,
+      timeoffHours: 0,
+      absenceDays: 0,
+      vacationDays: 0,
+      administrativeDays: 0,
+      sickDays: 0,
+    }
+  );
+
+  return {
+    type: "statistics",
+    title: `Статистика сотрудников за ${period.label}`,
+    monthLabel: `Статистика - ${period.label}`,
+    period,
+    totals,
+    rows,
+    rankings: {
+      workHours: topStatisticsRows(rows, "workHours"),
+      dutyDays: topStatisticsRows(rows, "dutyDays"),
+      timeoffHours: topStatisticsRows(rows, "timeoffHours"),
+      administrativeDays: topStatisticsRows(rows, "administrativeDays"),
+    },
+  };
+}
+
+function statisticsPeriod() {
+  const year = state.statisticsDate.getFullYear();
+  const month = state.statisticsDate.getMonth();
+  if (state.statisticsMode === "year") {
+    return {
+      mode: "year",
+      year,
+      start: new Date(year, 0, 1),
+      end: new Date(year, 11, 31),
+      label: `${year} год`,
+    };
+  }
+  return {
+    mode: "month",
+    year,
+    month,
+    start: new Date(year, month, 1),
+    end: new Date(year, month + 1, 0),
+    label: `${monthNames[month].toLowerCase()} ${year}`,
+  };
+}
+
+function employeePeriodStats(employeeId, period) {
+  return Object.entries(state.attendance[employeeId] ?? {}).reduce(
+    (stats, [key, value]) => {
+      const date = parseDateKey(key);
+      if (!date || !isDateInPeriod(date, period)) return stats;
+      const entry = normalizeAttendanceEntry(value, date);
+      if (!entry) return stats;
+      if (entry.status === "present") {
+        stats.workDays += 1;
+        stats.presentHours += entry.hours;
+        stats.workHours += entry.hours;
+      }
+      if (entry.status === "duty") {
+        stats.dutyDays += 1;
+        stats.dutyHours += entry.hours;
+        stats.workHours += entry.hours;
+      }
+      if (entry.status === "timeoff") stats.timeoffHours += entry.hours;
+      if (entry.status === "absence") stats.absenceDays += 1;
+      if (entry.status === "vacation") stats.vacationDays += 1;
+      if (entry.status === "administrative") stats.administrativeDays += 1;
+      if (entry.status === "sick") stats.sickDays += 1;
+      return stats;
+    },
+    {
+      workDays: 0,
+      workHours: 0,
+      presentHours: 0,
+      dutyDays: 0,
+      dutyHours: 0,
+      timeoffHours: 0,
+      absenceDays: 0,
+      vacationDays: 0,
+      administrativeDays: 0,
+      sickDays: 0,
+    }
+  );
+}
+
+function topStatisticsRows(rows, field) {
+  return rows
+    .filter((row) => Number(row[field]) > 0)
+    .slice()
+    .sort((a, b) => b[field] - a[field] || a.name.localeCompare(b.name, "ru"))
+    .slice(0, 5);
+}
+
+function isDateInPeriod(date, period) {
+  if (period.mode === "year") return date.getFullYear() === period.year;
+  return date.getFullYear() === period.year && date.getMonth() === period.month;
 }
 
 function employeeMonthStats(employeeId) {
@@ -1543,6 +1802,36 @@ async function exportDutyDocx() {
   if (result?.filePath) alert(`DOCX сохранен:\n${result.filePath}`);
 }
 
+function printStatisticsReport() {
+  const printWindow = window.open("", "_blank", "width=1000,height=800");
+  if (!printWindow) {
+    alert("Не удалось открыть окно печати.");
+    return;
+  }
+  printWindow.document.write(buildStatisticsPrintHtml(buildStatisticsPayload()));
+  printWindow.document.close();
+  printWindow.focus();
+  setTimeout(() => printWindow.print(), 250);
+}
+
+async function exportStatisticsExcel() {
+  if (!window.gngsApi?.saveXlsx) {
+    alert("Экспорт Excel недоступен в этом режиме запуска.");
+    return;
+  }
+  const result = await window.gngsApi.saveXlsx(buildStatisticsPayload());
+  if (result?.filePath) alert(`Excel сохранен:\n${result.filePath}`);
+}
+
+async function exportStatisticsDocx() {
+  if (!window.gngsApi?.saveDocx) {
+    alert("Экспорт DOCX недоступен в этом режиме запуска.");
+    return;
+  }
+  const result = await window.gngsApi.saveDocx(buildStatisticsPayload());
+  if (result?.filePath) alert(`DOCX сохранен:\n${result.filePath}`);
+}
+
 function printEmployeeReport() {
   const printWindow = window.open("", "_blank", "width=900,height=800");
   if (!printWindow) {
@@ -1576,7 +1865,6 @@ async function exportEmployeeDocx() {
 function buildEmployeeReportPayload() {
   const employee = selectedEmployee();
   const usedTimeoff = timeoffUsed(employee.id);
-  const dutyEarned = dutyTimeoffEarned(employee.id);
   const leftTimeoff = Math.max(0, timeoffBalance(employee) - usedTimeoff);
   const stats = employeeMonthStats(employee.id);
   const monthRows = employeeMonthlyBreakdown(employee.id).map((row) => [
@@ -1598,15 +1886,15 @@ function buildEmployeeReportPayload() {
           ["Разряд", formatGrade(employee.grade)],
           ["Телефон", employee.phone],
           ["Дата приема", employee.start],
+          ["Стаж", employeeExperience(employee.start)],
         ],
       },
       {
         title: "Отгулы",
         rows: [
-          ["Начислено вручную", `${formatHours(hoursToDays(baseTimeoffBalance(employee)))} дн. / ${formatHours(baseTimeoffBalance(employee))} ч.`],
-          ["Начислено за дежурства", `${formatHours(hoursToDays(dutyEarned))} дн. / ${formatHours(dutyEarned)} ч.`],
-          ["Использовано", `${formatHours(hoursToDays(usedTimeoff))} дн. / ${formatHours(usedTimeoff)} ч.`],
           ["Доступно сейчас", `${formatHours(hoursToDays(leftTimeoff))} дн. / ${formatHours(leftTimeoff)} ч.`],
+          ["Всего доступно", `${formatHours(hoursToDays(timeoffBalance(employee)))} дн. / ${formatHours(timeoffBalance(employee))} ч.`],
+          ["Использовано", `${formatHours(hoursToDays(usedTimeoff))} дн. / ${formatHours(usedTimeoff)} ч.`],
         ],
       },
       {
@@ -1708,6 +1996,94 @@ function buildEmployeePrintHtml(payload) {
 </html>`;
 }
 
+function buildStatisticsPrintHtml(payload) {
+  const summaryRows = [
+    ["Сотрудников", payload.totals.employees],
+    ["Рабочих дней", payload.totals.workDays],
+    ["Часов всего", `${formatHours(payload.totals.workHours)} ч.`],
+    ["Дежурств", payload.totals.dutyDays],
+    ["Отгулов", `${formatHours(hoursToDays(payload.totals.timeoffHours))} дн. / ${formatHours(payload.totals.timeoffHours)} ч.`],
+    ["Админ", payload.totals.administrativeDays],
+    ["Отпуск", payload.totals.vacationDays],
+    ["Неявки", payload.totals.absenceDays],
+    ["Больничный", payload.totals.sickDays],
+  ]
+    .map((row) => `<tr><td>${escapeHtml(row[0])}</td><td>${escapeHtml(row[1])}</td></tr>`)
+    .join("");
+
+  const rankingSections = [
+    ["Больше всего часов", payload.rankings.workHours, (row) => `${formatHours(row.workHours)} ч.`],
+    ["Больше всего дежурств", payload.rankings.dutyDays, (row) => `${row.dutyDays}`],
+    ["Больше всего отгулов", payload.rankings.timeoffHours, (row) => `${formatHours(hoursToDays(row.timeoffHours))} дн. / ${formatHours(row.timeoffHours)} ч.`],
+    ["Больше всего админов", payload.rankings.administrativeDays, (row) => `${row.administrativeDays}`],
+  ]
+    .map(([title, rows, formatValue]) => {
+      const body = rows.length
+        ? rows.map((row, index) => `<tr><td>${index + 1}</td><td>${escapeHtml(row.name)}</td><td>${escapeHtml(row.role)}</td><td>${escapeHtml(formatValue(row))}</td></tr>`).join("")
+        : `<tr><td colspan="4">Нет данных за период</td></tr>`;
+      return `<section><h2>${escapeHtml(title)}</h2><table><thead><tr><th>№</th><th>Сотрудник</th><th>Должность</th><th>Значение</th></tr></thead><tbody>${body}</tbody></table></section>`;
+    })
+    .join("");
+
+  const employeeRows = payload.rows
+    .map(
+      (row, index) => `
+        <tr>
+          <td>${index + 1}</td>
+          <td>${escapeHtml(row.name)}</td>
+          <td>${escapeHtml(row.role)}</td>
+          <td>${row.workDays}</td>
+          <td>${formatHours(row.workHours)}</td>
+          <td>${row.dutyDays}</td>
+          <td>${formatHours(hoursToDays(row.timeoffHours))} / ${formatHours(row.timeoffHours)}</td>
+          <td>${row.absenceDays}</td>
+          <td>${row.vacationDays}</td>
+          <td>${row.administrativeDays}</td>
+          <td>${row.sickDays}</td>
+        </tr>
+      `
+    )
+    .join("");
+
+  return `<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <title>${escapeHtml(payload.title)}</title>
+  <style>
+    @page { size: A4 portrait; margin: 12mm; }
+    body { font-family: Arial, sans-serif; color: #111; }
+    h1 { font-size: 20px; margin: 0 0 14px; text-align: center; }
+    h2 { font-size: 14px; margin: 14px 0 7px; }
+    section { break-inside: avoid; margin-bottom: 12px; }
+    table { border-collapse: collapse; width: 100%; margin-bottom: 8px; }
+    th, td { border: 1px solid #94a3b8; padding: 6px 7px; font-size: 11px; text-align: left; }
+    th { background: #eef6f4; font-weight: 700; text-align: center; }
+    td:first-child { text-align: center; }
+    .summary { width: 65%; margin: 0 auto 12px; }
+    .summary td:first-child { text-align: left; font-weight: 700; background: #f8fafc; }
+  </style>
+</head>
+<body>
+  <h1>${escapeHtml(payload.title)}</h1>
+  <section>
+    <h2>Сводка</h2>
+    <table class="summary"><tbody>${summaryRows}</tbody></table>
+  </section>
+  ${rankingSections}
+  <section>
+    <h2>Все сотрудники</h2>
+    <table>
+      <thead>
+        <tr><th>№</th><th>Сотрудник</th><th>Должность</th><th>Раб. дни</th><th>Часы</th><th>Деж.</th><th>Отгулы дн./ч.</th><th>Неявки</th><th>Отпуск</th><th>Админ</th><th>Больн.</th></tr>
+      </thead>
+      <tbody>${employeeRows}</tbody>
+    </table>
+  </section>
+</body>
+</html>`;
+}
+
 function escapeHtml(value) {
   return String(value ?? "")
     .replace(/&/g, "&amp;")
@@ -1724,6 +2100,7 @@ function renderProfile() {
     document.querySelector("#profileRole").textContent = "";
     document.querySelector("#profilePhone").textContent = "-";
     document.querySelector("#profileStart").textContent = "-";
+    document.querySelector("#profileExperience").textContent = "-";
     document.querySelector("#profileGrade").textContent = "-";
     profileTimeoffBalanceInput.value = "0";
     document.querySelector("#profileTimeoffBalanceHours").textContent = "0 ч.";
@@ -1738,6 +2115,7 @@ function renderProfile() {
   document.querySelector("#profileRole").textContent = employee.role;
   document.querySelector("#profilePhone").textContent = employee.phone;
   document.querySelector("#profileStart").textContent = employee.start;
+  document.querySelector("#profileExperience").textContent = employeeExperience(employee.start);
   document.querySelector("#profileGrade").textContent = formatGrade(employee.grade);
   if (document.activeElement !== profileTimeoffBalanceInput) {
     profileTimeoffBalanceInput.value = formatHours(hoursToDays(baseTimeoffBalance(employee)));
@@ -1959,6 +2337,44 @@ function parseDateKey(key) {
   const date = new Date(year, month - 1, day);
   if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return null;
   return date;
+}
+
+function employeeExperience(value) {
+  const match = String(value ?? "").match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+  if (!match) return "-";
+  const [, dayText, monthText, yearText] = match;
+  const start = new Date(Number(yearText), Number(monthText) - 1, Number(dayText));
+  if (Number.isNaN(start.getTime())) return "-";
+  const today = new Date();
+  if (start > today) return "-";
+
+  let years = today.getFullYear() - start.getFullYear();
+  let months = today.getMonth() - start.getMonth();
+  let days = today.getDate() - start.getDate();
+
+  if (days < 0) {
+    months -= 1;
+    days += new Date(today.getFullYear(), today.getMonth(), 0).getDate();
+  }
+  if (months < 0) {
+    years -= 1;
+    months += 12;
+  }
+
+  const parts = [];
+  if (years > 0) parts.push(`${years} ${pluralRu(years, "год", "года", "лет")}`);
+  if (months > 0) parts.push(`${months} ${pluralRu(months, "месяц", "месяца", "месяцев")}`);
+  if (parts.length === 0) parts.push(`${days} ${pluralRu(days, "день", "дня", "дней")}`);
+  return parts.join(" ");
+}
+
+function pluralRu(value, one, few, many) {
+  const number = Math.abs(Number(value)) % 100;
+  const last = number % 10;
+  if (number > 10 && number < 20) return many;
+  if (last > 1 && last < 5) return few;
+  if (last === 1) return one;
+  return many;
 }
 
 function dayLabel(date) {

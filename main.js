@@ -177,6 +177,7 @@ async function chooseSavePath(event, payload, extension) {
 
 function buildXlsx(payload) {
   if (payload?.type === "employee") return buildEmployeeXlsx(payload);
+  if (payload?.type === "statistics") return buildStatisticsXlsx(payload);
 
   const rows = [
     { values: [payload.title], style: 1, height: 24 },
@@ -242,6 +243,7 @@ function buildXlsxPackage(sheetName, worksheet) {
 
 function buildDocx(payload) {
   if (payload?.type === "employee") return buildEmployeeDocx(payload);
+  if (payload?.type === "statistics") return buildStatisticsDocx(payload);
 
   const dayWidth = 340;
   const nameWidth = 2100;
@@ -294,6 +296,175 @@ function buildDocx(payload) {
   </w:body>
 </w:document>`,
   });
+}
+
+function buildStatisticsXlsx(payload) {
+  const rows = [
+    { values: [payload.title, "", "", "", "", "", "", "", "", ""], style: 1, height: 28 },
+    { values: [], style: 0 },
+    { values: ["Сводка", "", "", "", "", "", "", "", "", ""], style: 5, height: 22 },
+    ...statisticsSummaryRows(payload).map((row) => ({ values: [row[0], row[1], "", "", "", "", "", "", "", ""], style: 0, height: 22 })),
+    { values: [], style: 0 },
+    { values: ["Все сотрудники", "", "", "", "", "", "", "", "", ""], style: 5, height: 22 },
+    { values: ["№", "Сотрудник", "Должность", "Раб. дни", "Часы", "Деж.", "Отгулы дн./ч.", "Неявки", "Отпуск", "Админ", "Больн."], style: 2, height: 24 },
+    ...payload.rows.map((row, index) => ({
+      values: [
+        index + 1,
+        row.name,
+        row.role,
+        row.workDays,
+        `${formatPlainHours(row.workHours)} ч.`,
+        row.dutyDays,
+        `${formatPlainHours(row.timeoffHours / 8)} дн. / ${formatPlainHours(row.timeoffHours)} ч.`,
+        row.absenceDays,
+        row.vacationDays,
+        row.administrativeDays,
+        row.sickDays,
+      ],
+      style: 0,
+      height: 24,
+    })),
+  ];
+  const rankingStart = rows.length + 2;
+  rows.push({ values: [], style: 0 });
+  rows.push({ values: ["Рейтинги", "", "", "", "", "", "", "", "", ""], style: 5, height: 22 });
+  statisticsRankingGroups(payload).forEach((group) => {
+    rows.push({ values: [group.title, "", "", "", "", "", "", "", "", ""], style: 5, height: 22 });
+    rows.push({ values: ["№", "Сотрудник", "Должность", "Значение", "", "", "", "", "", ""], style: 2, height: 22 });
+    if (group.rows.length === 0) {
+      rows.push({ values: ["", "Нет данных за период", "", "", "", "", "", "", "", ""], style: 0, height: 22 });
+    } else {
+      group.rows.forEach((row, index) => {
+        rows.push({ values: [index + 1, row.name, row.role, group.format(row), "", "", "", "", "", ""], style: 0, height: 22 });
+      });
+    }
+    rows.push({ values: [], style: 0 });
+  });
+
+  const sheetRows = rows.map((row, rowIndex) => xlsxRow(row.values, rowIndex, row.style, row.height)).join("");
+  const merges = [
+    "A1:K1",
+    "A3:B3",
+    `A${rankingStart}:K${rankingStart}`,
+  ];
+
+  const worksheet = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <sheetViews><sheetView workbookViewId="0" showGridLines="0"/></sheetViews>
+  <sheetFormatPr defaultRowHeight="18"/>
+  <cols>
+    <col min="1" max="1" width="6" customWidth="1"/>
+    <col min="2" max="2" width="32" customWidth="1"/>
+    <col min="3" max="3" width="22" customWidth="1"/>
+    <col min="4" max="11" width="14" customWidth="1"/>
+  </cols>
+  <sheetData>${sheetRows}</sheetData>
+  <mergeCells count="${merges.length}">${merges.map((ref) => `<mergeCell ref="${ref}"/>`).join("")}</mergeCells>
+</worksheet>`;
+
+  return buildXlsxPackage("Статистика", worksheet);
+}
+
+function buildStatisticsDocx(payload) {
+  const summaryRows = statisticsSummaryRows(payload)
+    .map((row) => `<w:tr>${docxCell(row[0], { width: 3800, header: true, size: 20 })}${docxCell(row[1], { width: 3600, align: "center", size: 20 })}</w:tr>`)
+    .join("");
+  const summaryGrid = [3800, 3600];
+  const employeeGrid = [600, 3000, 2300, 1050, 1050, 850, 1400, 900, 900, 900, 900];
+  const employeeHeader = `<w:tr>${["№", "Сотрудник", "Должность", "Раб. дни", "Часы", "Деж.", "Отгулы", "Неявки", "Отпуск", "Админ", "Больн."].map((cell, index) => docxCell(cell, { width: employeeGrid[index], header: true, align: "center", size: 16 })).join("")}</w:tr>`;
+  const employeeRows = payload.rows
+    .map(
+      (row, index) => `<w:tr>
+        ${docxCell(index + 1, { width: employeeGrid[0], align: "center", size: 16 })}
+        ${docxCell(row.name, { width: employeeGrid[1], size: 16 })}
+        ${docxCell(row.role, { width: employeeGrid[2], size: 16 })}
+        ${docxCell(row.workDays, { width: employeeGrid[3], align: "center", size: 16 })}
+        ${docxCell(`${formatPlainHours(row.workHours)} ч.`, { width: employeeGrid[4], align: "center", size: 16 })}
+        ${docxCell(row.dutyDays, { width: employeeGrid[5], align: "center", size: 16 })}
+        ${docxCell(`${formatPlainHours(row.timeoffHours / 8)} / ${formatPlainHours(row.timeoffHours)}`, { width: employeeGrid[6], align: "center", size: 16 })}
+        ${docxCell(row.absenceDays, { width: employeeGrid[7], align: "center", size: 16 })}
+        ${docxCell(row.vacationDays, { width: employeeGrid[8], align: "center", size: 16 })}
+        ${docxCell(row.administrativeDays, { width: employeeGrid[9], align: "center", size: 16 })}
+        ${docxCell(row.sickDays, { width: employeeGrid[10], align: "center", size: 16 })}
+      </w:tr>`
+    )
+    .join("");
+  const rankingGrid = [700, 3600, 2800, 2200];
+  const rankings = statisticsRankingGroups(payload)
+    .map((group) => {
+      const body = group.rows.length
+        ? group.rows
+            .map(
+              (row, index) => `<w:tr>
+                ${docxCell(index + 1, { width: rankingGrid[0], align: "center", size: 18 })}
+                ${docxCell(row.name, { width: rankingGrid[1], size: 18 })}
+                ${docxCell(row.role, { width: rankingGrid[2], size: 18 })}
+                ${docxCell(group.format(row), { width: rankingGrid[3], align: "center", size: 18 })}
+              </w:tr>`
+            )
+            .join("")
+        : `<w:tr>
+            ${docxCell("", { width: rankingGrid[0] })}
+            ${docxCell("Нет данных за период", { width: rankingGrid[1], size: 18 })}
+            ${docxCell("", { width: rankingGrid[2] })}
+            ${docxCell("", { width: rankingGrid[3] })}
+          </w:tr>`;
+      return `${docxParagraph(group.title, true, 22, "center")}<w:tbl>${docxTableProperties("fixed", rankingGrid)}${body}</w:tbl>`;
+    })
+    .join("");
+
+  return zipStore({
+    "[Content_Types].xml": `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+</Types>`,
+    "_rels/.rels": `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
+</Relationships>`,
+    "word/document.xml": `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:body>
+    ${docxParagraph(payload.title, true, 28, "center")}
+    ${docxParagraph("Сводка", true, 22, "center")}
+    <w:tbl>${docxTableProperties("fixed", summaryGrid)}${summaryRows}</w:tbl>
+    ${rankings}
+    ${docxParagraph("Все сотрудники", true, 22, "center")}
+    <w:tbl>${docxTableProperties("fixed", employeeGrid)}${employeeHeader}${employeeRows}</w:tbl>
+    <w:sectPr><w:pgSz w:w="16838" w:h="11906" w:orient="landscape"/><w:pgMar w:top="560" w:right="420" w:bottom="560" w:left="420" w:header="0" w:footer="0" w:gutter="0"/></w:sectPr>
+  </w:body>
+</w:document>`,
+  });
+}
+
+function statisticsSummaryRows(payload) {
+  return [
+    ["Сотрудников", payload.totals.employees],
+    ["Рабочих дней", payload.totals.workDays],
+    ["Часов всего", `${formatPlainHours(payload.totals.workHours)} ч.`],
+    ["Дежурств", payload.totals.dutyDays],
+    ["Отгулов", `${formatPlainHours(payload.totals.timeoffHours / 8)} дн. / ${formatPlainHours(payload.totals.timeoffHours)} ч.`],
+    ["Админ", payload.totals.administrativeDays],
+    ["Неявки", payload.totals.absenceDays],
+    ["Отпуск", payload.totals.vacationDays],
+    ["Больничный", payload.totals.sickDays],
+  ];
+}
+
+function statisticsRankingGroups(payload) {
+  return [
+    { title: "Больше всего часов", rows: payload.rankings.workHours, format: (row) => `${formatPlainHours(row.workHours)} ч.` },
+    { title: "Больше всего дежурств", rows: payload.rankings.dutyDays, format: (row) => `${row.dutyDays}` },
+    { title: "Больше всего отгулов", rows: payload.rankings.timeoffHours, format: (row) => `${formatPlainHours(row.timeoffHours / 8)} дн. / ${formatPlainHours(row.timeoffHours)} ч.` },
+    { title: "Больше всего админов", rows: payload.rankings.administrativeDays, format: (row) => `${row.administrativeDays}` },
+  ];
+}
+
+function formatPlainHours(value) {
+  const rounded = Math.round((Number(value) || 0) * 10) / 10;
+  return Number.isInteger(rounded) ? String(rounded) : String(rounded).replace(".", ",");
 }
 
 function buildEmployeeXlsx(payload) {
