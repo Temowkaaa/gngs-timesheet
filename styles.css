@@ -21,6 +21,8 @@
   --table-small-size: 9px;
   --table-name-size: 13px;
   --table-row-height: 40px;
+  --table-name-width: 160px;
+  --table-day-size: 54px;
   --employee-row-height: 58px;
   --employee-name-min-height: 42px;
   --status-present: #047857;
@@ -112,12 +114,14 @@ body {
 
 body[data-density="compact"] {
   --table-row-height: 30px;
+  --table-day-size: 44px;
   --employee-row-height: 48px;
   --employee-name-min-height: 34px;
 }
 
 body[data-density="large"] {
   --table-row-height: 54px;
+  --table-day-size: 64px;
   --employee-row-height: 70px;
   --employee-name-min-height: 54px;
 }
@@ -983,6 +987,11 @@ h3 {
   min-height: 0;
 }
 
+.employee-directory {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
 .employee-directory-head {
   display: flex;
   align-items: baseline;
@@ -1003,8 +1012,9 @@ h3 {
 
 .employee-directory-list {
   max-height: none;
-  height: 100%;
+  min-height: 0;
   overflow: auto;
+  padding-bottom: 12px;
 }
 
 .employee-row {
@@ -1080,9 +1090,9 @@ h3 {
 .employee-detail-page {
   padding: 14px;
   display: grid;
-  grid-template-rows: auto auto auto minmax(0, 1fr);
+  grid-template-rows: auto auto auto auto;
   gap: 12px;
-  overflow: hidden;
+  overflow: auto;
 }
 
 .employee-detail-hero {
@@ -1252,8 +1262,7 @@ h3 {
 }
 
 .employee-detail-page > .employee-info-panel:last-child {
-  min-height: 0;
-  overflow: hidden;
+  min-height: 180px;
   display: flex;
   flex-direction: column;
 }
@@ -1372,7 +1381,7 @@ h3 {
 
 .employee-month-scroller {
   flex: 1;
-  min-height: 0;
+  min-height: 120px;
   overflow: auto;
   border: 1px solid var(--line-soft);
   border-radius: 8px;
@@ -1402,9 +1411,10 @@ h3 {
 }
 
 .timesheet-table {
-  width: max-content;
-  min-width: 100%;
-  border-collapse: collapse;
+  width: auto;
+  min-width: max-content;
+  border-collapse: separate;
+  border-spacing: 0;
   table-layout: fixed;
   font-family: Inter, "Segoe UI", system-ui, sans-serif;
   color: #172033;
@@ -1412,9 +1422,19 @@ h3 {
 
 .timesheet-table th,
 .timesheet-table td {
-  border: 1px solid #b8c2cc;
+  border: 0;
+  border-right: 1px solid #b8c2cc;
+  border-bottom: 1px solid #b8c2cc;
   padding: 0;
   background: #fff;
+}
+
+.timesheet-table tr > :first-child {
+  border-left: 1px solid #b8c2cc;
+}
+
+.timesheet-table thead tr:first-child th {
+  border-top: 1px solid #b8c2cc;
 }
 
 .timesheet-table thead th {
@@ -1432,20 +1452,36 @@ h3 {
 .employee-name-cell {
   position: sticky;
   left: 0;
-  z-index: 2;
-  width: 138px;
-  min-width: 138px;
-  max-width: 138px;
+  z-index: 6;
+  width: var(--table-name-width);
+  min-width: var(--table-name-width);
+  max-width: var(--table-name-width);
+  background-clip: padding-box;
+  box-shadow: 1px 0 0 #b8c2cc;
 }
 
 .name-header {
-  z-index: 4;
+  z-index: 8;
   height: 48px;
+  background: #f8fafc;
+}
+
+.timesheet-table thead th.name-header {
+  top: 0;
+  z-index: 20;
   background: #f8fafc;
 }
 
 .employee-name-cell {
   background: #fff;
+}
+
+.name-col {
+  width: var(--table-name-width);
+}
+
+.day-col {
+  width: var(--table-day-size);
 }
 
 .employee-name-button {
@@ -1479,9 +1515,9 @@ h3 {
 }
 
 .day-header {
-  width: 32px;
-  min-width: 32px;
-  max-width: 32px;
+  width: var(--table-day-size);
+  min-width: var(--table-day-size);
+  max-width: var(--table-day-size);
 }
 
 .weekday-header {
@@ -1528,10 +1564,37 @@ body[data-weekend-tint="off"] .date-header.weekend {
 }
 
 .day-cell {
-  width: 32px;
-  min-width: 32px;
-  max-width: 32px;
-  height: var(--table-row-height);
+  width: var(--table-day-size);
+  min-width: var(--table-day-size);
+  max-width: var(--table-day-size);
+  height: var(--table-day-size);
+}
+
+.duty-table {
+  min-width: max-content;
+}
+
+.duty-table .day-header,
+.duty-table .day-cell,
+.duty-table .day-col {
+  width: 44px;
+  min-width: 44px;
+  max-width: 44px;
+}
+
+.duty-table .day-cell {
+  height: 44px;
+}
+
+.duty-table .employee-name-button {
+  min-height: 44px;
+}
+
+.duty-table .employee-name-button strong,
+.duty-table .employee-name-button span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .mark-button {
@@ -2172,6 +2235,10 @@ body[data-theme="dark"] .timesheet-table td {
 
 body[data-theme="dark"] .timesheet-table thead th,
 body[data-theme="dark"] .name-header {
+  background: #263244;
+}
+
+body[data-theme="dark"] .timesheet-table thead th.name-header {
   background: #263244;
 }
 

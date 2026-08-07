@@ -1,6 +1,6 @@
 {
   "name": "gngs-timesheet",
-  "version": "1.0.6",
+  "version": "1.0.8",
   "description": "ГНГС табель учета",
   "main": "main.js",
   "author": "Галишников Артем",
@@ -9,6 +9,8 @@
   "scripts": {
     "start": "electron .",
     "build": "set CSC_IDENTITY_AUTO_DISCOVERY=false&& electron-builder --config electron-builder.config.js --win nsis --publish never",
+    "build:win7": "set CSC_IDENTITY_AUTO_DISCOVERY=false&& set GNGS_UPDATE_CHANNEL=legacy&& electron-builder --config electron-builder.legacy.config.js --win nsis --x64 --publish never",
+    "build:win7:ia32": "set CSC_IDENTITY_AUTO_DISCOVERY=false&& set GNGS_UPDATE_CHANNEL=legacy-ia32&& electron-builder --config electron-builder.legacy.config.js --win nsis --ia32 --publish never",
     "build:folder": "electron-packager . \"ГНГС табель учета\" --platform=win32 --arch=x64 --out=release --overwrite --icon=assets/logo.ico --prune=true --ignore=\"^/(dist|release)$\"",
     "publish": "set CSC_IDENTITY_AUTO_DISCOVERY=false&& electron-builder --config electron-builder.config.js --win nsis --publish always"
   },

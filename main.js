@@ -2,6 +2,7 @@ const { app, BrowserWindow, Menu, dialog, ipcMain } = require("electron");
 const { autoUpdater } = require("electron-updater");
 const fs = require("fs");
 const path = require("path");
+const packageMetadata = require("./package.json");
 
 let mainWindow = null;
 let latestUpdateStatus = { status: "idle", message: "Готово к проверке" };
@@ -11,7 +12,9 @@ const updateFeed = {
   provider: "github",
   owner: "Temowkaaa",
   repo: "gngs-timesheet",
+  channel: updateChannel(),
 };
+const appIcon = path.join(__dirname, "assets", "logo.ico");
 
 if (process.platform === "win32") {
   app.setAppUserModelId("ru.gngs.timesheet");
@@ -25,7 +28,7 @@ function createWindow() {
     minHeight: 680,
     title: "ГНГС табель учета",
     backgroundColor: "#eef2f5",
-    icon: path.join(__dirname, "assets", "logo.ico"),
+    icon: appIcon,
     autoHideMenuBar: true,
     webPreferences: {
       contextIsolation: true,
@@ -33,6 +36,15 @@ function createWindow() {
       preload: path.join(__dirname, "preload.js"),
     },
   });
+
+  mainWindow.webContents.setWindowOpenHandler(() => ({
+    action: "allow",
+    overrideBrowserWindowOptions: {
+      icon: appIcon,
+      autoHideMenuBar: true,
+      backgroundColor: "#ffffff",
+    },
+  }));
 
   mainWindow.loadFile(path.join(__dirname, "index.html"));
 }
@@ -127,6 +139,7 @@ ipcMain.handle("updates:install", () => {
 function configureAutoUpdater() {
   autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = true;
+  autoUpdater.channel = updateChannel();
   autoUpdater.setFeedURL(updateFeed);
 
   autoUpdater.on("checking-for-update", () => sendUpdateStatus("checking", "Проверяем обновления..."));
@@ -142,6 +155,13 @@ function configureAutoUpdater() {
     sendUpdateStatus("downloaded", `Версия ${info.version} скачана. Можно установить.`);
   });
   autoUpdater.on("error", (error) => sendUpdateStatus("error", updateErrorMessage(error)));
+}
+
+function updateChannel() {
+  if (packageMetadata.gngsUpdateChannel === "legacy") {
+    return process.arch === "ia32" ? "legacy-ia32" : "legacy";
+  }
+  return "latest";
 }
 
 function sendUpdateStatus(status, message) {

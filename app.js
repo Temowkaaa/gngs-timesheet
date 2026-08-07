@@ -358,6 +358,7 @@ const profileTimeoffBalanceInput = document.querySelector("#profileTimeoffBalanc
 const settingsButton = document.querySelector("#settingsButton");
 const searchButton = document.querySelector("#searchButton");
 const searchPopover = document.querySelector("#searchPopover");
+let settingsInputTimer = null;
 
 function init() {
   applySettings();
@@ -413,6 +414,7 @@ function bindEvents() {
   document.querySelector("#checkUpdatesButton").addEventListener("click", checkForUpdates);
   document.querySelector("#installUpdateButton").addEventListener("click", installUpdate);
   window.gngsApi?.onUpdateStatus?.(handleUpdateStatus);
+  document.querySelector("#settingPositions").addEventListener("input", scheduleSettingsUpdate);
   document.querySelector("#settingPositions").addEventListener("change", updateSettingsFromForm);
   document.querySelectorAll("[data-status-setting]").forEach((input) => {
     input.addEventListener("change", updateSettingsFromForm);
@@ -525,6 +527,7 @@ function openSettingsModal() {
 }
 
 function closeSettingsModal() {
+  updateSettingsFromForm();
   settingsModal.hidden = true;
   settingsModalOverlay.hidden = true;
 }
@@ -611,6 +614,7 @@ async function updateLaunchAtLoginSetting(event) {
 }
 
 function updateSettingsFromForm() {
+  clearTimeout(settingsInputTimer);
   const statuses = {};
   STATUS_ORDER.forEach((status) => {
     const name = document.querySelector(`[data-status-setting="${status}"][data-field="name"]`).value.trim();
@@ -636,6 +640,11 @@ function updateSettingsFromForm() {
   applySettings();
   fillPositionSelects();
   render();
+}
+
+function scheduleSettingsUpdate() {
+  clearTimeout(settingsInputTimer);
+  settingsInputTimer = setTimeout(updateSettingsFromForm, 250);
 }
 
 function applySettings() {
@@ -816,6 +825,10 @@ function syncActiveView() {
   });
 }
 
+function tableColumnGroup(daysCount) {
+  return `<colgroup><col class="name-col">${Array.from({ length: daysCount }, () => '<col class="day-col">').join("")}</colgroup>`;
+}
+
 function renderTimesheet() {
   const employeesToShow = filteredEmployees();
   if (employeesToShow.length === 0) {
@@ -845,6 +858,7 @@ function renderTimesheet() {
   const dayHeaderCells = days
     .map((date) => `<th class="day-header date-header ${isWeekend(date) ? "weekend" : ""}">${dayLabel(date)}</th>`)
     .join("");
+  const columnGroup = tableColumnGroup(days.length);
 
   const rows = employeesToShow
     .map((employee) => {
@@ -869,9 +883,9 @@ function renderTimesheet() {
         <tr>
           <td class="employee-name-cell">
             <button class="employee-name-button ${employee.id === state.selectedEmployeeId ? "is-selected" : ""}" type="button" data-profile-id="${employee.id}">
-              <strong>${employee.lastName}</strong>
-              <strong>${nameLine}</strong>
-              <span>${employee.role}</span>
+              <strong>${escapeHtml(employee.lastName)}</strong>
+              <strong>${escapeHtml(nameLine)}</strong>
+              <span>${escapeHtml(displayRole(employee.role))}</span>
             </button>
           </td>
           ${dayCells}
@@ -881,6 +895,7 @@ function renderTimesheet() {
     .join("");
 
   timesheetTable.innerHTML = `
+    ${columnGroup}
     <thead>
       <tr>
         <th class="name-header" rowspan="2">Фамилия<br />Имя</th>
@@ -960,7 +975,7 @@ function renderEmployeesList() {
                 <span class="employee-row-avatar">${employeeAvatar(employee)}</span>
                 <span class="employee-row-main">
                   <strong>${escapeHtml(fullName(employee))}</strong>
-                  <small>${escapeHtml(employee.role)}</small>
+                  <small>${escapeHtml(displayRole(employee.role))}</small>
                 </span>
               </button>
             `
@@ -996,7 +1011,7 @@ function renderEmployeesList() {
         <div>
           <span class="kicker">Личная карточка</span>
           <h3>${escapeHtml(fullName(selectedEmployee))}</h3>
-          <p>${escapeHtml(selectedEmployee.role)}</p>
+          <p>${escapeHtml(displayRole(selectedEmployee.role))}</p>
         </div>
         <div class="employee-detail-actions">
           <button type="button" class="employee-edit-button" data-open-profile>
@@ -1247,7 +1262,7 @@ function buildStatisticsPayload() {
     .map((employee) => ({
       id: employee.id,
       name: fullName(employee),
-      role: employee.role,
+      role: displayRole(employee.role),
       ...employeePeriodStats(employee.id, period),
     }))
     .sort((a, b) => b.workHours - a.workHours || b.workDays - a.workDays || a.name.localeCompare(b.name, "ru"));
@@ -1512,10 +1527,10 @@ function renderDutySchedule() {
   const dayHeaderCells = days
     .map((date) => `<th class="day-header date-header weekend ${isDutyExtraDate(date) ? "extra-duty-day" : ""}">${dayLabel(date)}</th>`)
     .join("");
+  const columnGroup = tableColumnGroup(days.length);
 
   const rows = employeesToShow
     .map((employee) => {
-      const nameLine = [employee.firstName, employee.middleName].filter(Boolean).join(" ");
       const dayCells = days
         .map((date) => {
           const entry = getAttendanceEntry(employee.id, date);
@@ -1536,9 +1551,8 @@ function renderDutySchedule() {
         <tr>
           <td class="employee-name-cell">
             <button class="employee-name-button ${employee.id === state.selectedEmployeeId ? "is-selected" : ""}" type="button" data-profile-id="${employee.id}">
-              <strong>${employee.lastName}</strong>
-              <strong>${nameLine}</strong>
-              <span>${employee.role}</span>
+              <strong>${escapeHtml(fullName(employee))}</strong>
+              <span>${escapeHtml(displayRole(employee.role))}</span>
             </button>
           </td>
           ${dayCells}
@@ -1548,6 +1562,7 @@ function renderDutySchedule() {
     .join("");
 
   dutyTable.innerHTML = `
+    ${columnGroup}
     <thead>
       <tr>
         <th class="name-header" rowspan="2">Фамилия<br />Имя</th>
@@ -1716,7 +1731,7 @@ function buildSchedulePayload(title, monthLabel, days, dutyOnly) {
     })),
     rows: (dutyOnly ? employeesForDutyDays(days) : filteredEmployees()).map((employee) => ({
       name: fullName(employee),
-      role: employee.role,
+      role: displayRole(employee.role),
       cells: days.map((date) => {
         const entry = getAttendanceEntry(employee.id, date);
         return dutyOnly ? dutyExportValue(entry) : attendanceExportValue(entry);
@@ -1882,7 +1897,7 @@ function buildEmployeeReportPayload() {
         title: "Данные сотрудника",
         rows: [
           ["ФИО", fullName(employee)],
-          ["Должность", employee.role],
+          ["Должность", displayRole(employee.role)],
           ["Разряд", formatGrade(employee.grade)],
           ["Телефон", employee.phone],
           ["Дата приема", employee.start],
@@ -2112,7 +2127,7 @@ function renderProfile() {
   }
   document.querySelector("#profileAvatar").innerHTML = employeeAvatar(employee);
   document.querySelector("#profileName").textContent = fullName(employee);
-  document.querySelector("#profileRole").textContent = employee.role;
+  document.querySelector("#profileRole").textContent = displayRole(employee.role);
   document.querySelector("#profilePhone").textContent = employee.phone;
   document.querySelector("#profileStart").textContent = employee.start;
   document.querySelector("#profileExperience").textContent = employeeExperience(employee.start);
@@ -2175,7 +2190,7 @@ function openProfileEdit() {
   document.querySelector("#editEmployeeLastName").value = employee.lastName;
   document.querySelector("#editEmployeeFirstName").value = employee.firstName;
   document.querySelector("#editEmployeeMiddleName").value = employee.middleName ?? "";
-  document.querySelector("#editEmployeeRole").value = employee.role;
+  document.querySelector("#editEmployeeRole").value = normalizePosition(employee.role);
   document.querySelector("#editEmployeeGrade").value = gradeInputValue(employee.grade);
   document.querySelector("#editEmployeePhone").value = employee.phone === "-" ? "" : employee.phone;
   document.querySelector("#editEmployeeStart").value = ruDateToInput(employee.start);
@@ -2205,7 +2220,7 @@ async function saveProfileEdit(event) {
   employee.lastName = lastName;
   employee.firstName = firstName;
   employee.middleName = document.querySelector("#editEmployeeMiddleName").value.trim();
-  employee.role = document.querySelector("#editEmployeeRole").value;
+  employee.role = normalizePosition(document.querySelector("#editEmployeeRole").value);
   employee.grade = normalizeGradeInput(document.querySelector("#editEmployeeGrade").value);
   employee.phone = normalizedPhoneValue("#editEmployeePhone");
   employee.start = dateInputToRu(document.querySelector("#editEmployeeStart").value) || employee.start;
@@ -2262,7 +2277,7 @@ function closeEmployeeModal() {
 function filteredEmployees() {
   const search = employeeSearch.value.trim().toLowerCase();
   return employees.filter((employee) => {
-    return `${fullName(employee)} ${employee.role}`.toLowerCase().includes(search);
+    return `${fullName(employee)} ${displayRole(employee.role)}`.toLowerCase().includes(search);
   });
 }
 
@@ -2679,10 +2694,15 @@ function formatGrade(value) {
   return grade ? `${grade} разряд` : "";
 }
 
+function displayRole(role) {
+  return normalizePosition(role);
+}
+
 function normalizePosition(role) {
   const positions = positionsForNormalize();
-  if (positions.includes(role)) return role;
   const normalized = String(role ?? "").trim().toLowerCase();
+  const matchedPosition = positions.find((position) => position.toLowerCase() === normalized);
+  if (matchedPosition) return matchedPosition;
   const aliases = {
     "мастер участка": "Мастер",
     "мастер": "Мастер",
