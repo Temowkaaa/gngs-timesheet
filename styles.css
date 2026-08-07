@@ -1571,19 +1571,31 @@ body[data-weekend-tint="off"] .date-header.weekend {
 }
 
 .duty-table {
-  min-width: max-content;
+  width: 100%;
+  min-width: 100%;
 }
 
 .duty-table .day-header,
 .duty-table .day-cell,
 .duty-table .day-col {
-  width: 44px;
   min-width: 44px;
-  max-width: 44px;
+  max-width: none;
+}
+
+.duty-table .day-col {
+  width: auto;
 }
 
 .duty-table .day-cell {
   height: 44px;
+}
+
+.duty-table .name-col,
+.duty-table .name-header,
+.duty-table .employee-name-cell {
+  width: 260px;
+  min-width: 260px;
+  max-width: 260px;
 }
 
 .duty-table .employee-name-button {

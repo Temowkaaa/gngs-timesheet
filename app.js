@@ -1528,6 +1528,7 @@ function renderDutySchedule() {
     .map((date) => `<th class="day-header date-header weekend ${isDutyExtraDate(date) ? "extra-duty-day" : ""}">${dayLabel(date)}</th>`)
     .join("");
   const columnGroup = tableColumnGroup(days.length);
+  dutyTable.style.minWidth = `${260 + days.length * 44}px`;
 
   const rows = employeesToShow
     .map((employee) => {
