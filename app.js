@@ -1,6 +1,7 @@
 const STORAGE_KEYS = {
   employees: "gngs.employees",
   attendance: "gngs.attendance",
+  attendanceMigrated: "gngs.attendanceMigrated",
   settings: "gngs.settings",
 };
 
@@ -8,6 +9,8 @@ const SUPABASE = {
   url: "https://ecqyuqhudbutofwymwko.supabase.co",
   key: "sb_publishable_PdTZlr9NgnUeuE3K1YgXFw_DjCxJwo5",
   employeesTable: "employees",
+  attendanceTable: "attendance",
+  settingsTable: "app_settings",
 };
 
 const DEFAULT_EMPLOYEE_PHOTO = "assets/logo.ico";
@@ -360,14 +363,16 @@ const searchButton = document.querySelector("#searchButton");
 const searchPopover = document.querySelector("#searchPopover");
 let settingsInputTimer = null;
 
-function init() {
+async function init() {
   applySettings();
-  if (Object.keys(state.attendance).length === 0) seedAttendance();
+  if (!SUPABASE.url && Object.keys(state.attendance).length === 0) seedAttendance();
   fillPositionSelects();
   bindEvents();
   render();
   syncAppInfo();
-  syncEmployeesFromSupabase();
+  await syncEmployeesFromSupabase();
+  await syncSharedSettingsFromSupabase();
+  syncAttendanceFromSupabase();
 }
 
 function seedAttendance() {
@@ -615,6 +620,8 @@ async function updateLaunchAtLoginSetting(event) {
 
 function updateSettingsFromForm() {
   clearTimeout(settingsInputTimer);
+  const previousPositions = availablePositions();
+  const previousStatuses = normalizeStatusSettings(state.settings.statuses);
   const statuses = {};
   STATUS_ORDER.forEach((status) => {
     const name = document.querySelector(`[data-status-setting="${status}"][data-field="name"]`).value.trim();
@@ -640,6 +647,9 @@ function updateSettingsFromForm() {
   applySettings();
   fillPositionSelects();
   render();
+  saveSharedSettingsChanges(previousPositions, previousStatuses).catch((error) => {
+    console.warn("Supabase shared settings save skipped:", error.message);
+  });
 }
 
 function scheduleSettingsUpdate() {
@@ -669,12 +679,39 @@ function availablePositions() {
     : DEFAULT_POSITIONS;
 }
 
+function positionsFromEmployees(source = employees) {
+  const result = [];
+  const seen = new Set();
+  source.forEach((employee) => {
+    const position = String(employee?.role ?? "").trim();
+    const key = position.toLowerCase();
+    if (!position || seen.has(key)) return;
+    seen.add(key);
+    result.push(position);
+  });
+  return result;
+}
+
 function parsePositions(value) {
   const positions = String(value)
     .split(/\r?\n/)
     .map((position) => position.trim())
     .filter(Boolean);
   return [...new Set(positions)].length > 0 ? [...new Set(positions)] : DEFAULT_POSITIONS;
+}
+
+function normalizeStatusSettings(value) {
+  const savedStatuses = value && typeof value === "object" ? value : {};
+  const statuses = {};
+  STATUS_ORDER.forEach((status) => {
+    statuses[status] = {
+      ...defaultStatusSettings[status],
+      ...(savedStatuses[status] && typeof savedStatuses[status] === "object" ? savedStatuses[status] : {}),
+      code: defaultStatusSettings[status].code,
+      color: normalizeColor(savedStatuses[status]?.color, defaultStatusSettings[status].color),
+    };
+  });
+  return statuses;
 }
 
 function statusName(status) {
@@ -2258,6 +2295,7 @@ function deleteSelectedEmployee() {
   state.profileEditing = false;
   saveEmployees();
   deleteEmployeeFromSupabase(employee.id).catch((error) => console.warn("Supabase employee delete skipped:", error.message));
+  deleteEmployeeAttendanceFromSupabase(employee.id).catch((error) => console.warn("Supabase attendance delete skipped:", error.message));
   saveAttendance();
   render();
 }
@@ -2305,18 +2343,26 @@ function selectedEmployee() {
 }
 
 function setAttendance(employeeId, date, status, hours = defaultHours(status)) {
+  const key = dateKey(date);
   state.attendance[employeeId] = state.attendance[employeeId] ?? {};
-  state.attendance[employeeId][dateKey(date)] = {
+  state.attendance[employeeId][key] = {
     status,
     hours,
   };
   saveAttendance();
+  saveAttendanceRecordToSupabase(employeeId, key, state.attendance[employeeId][key]).catch((error) => {
+    console.warn("Supabase attendance save skipped:", error.message);
+  });
 }
 
 function clearAttendance(employeeId, date) {
   if (!state.attendance[employeeId]) return;
-  delete state.attendance[employeeId][dateKey(date)];
+  const key = dateKey(date);
+  delete state.attendance[employeeId][key];
   saveAttendance();
+  deleteAttendanceRecordFromSupabase(employeeId, key).catch((error) => {
+    console.warn("Supabase attendance delete skipped:", error.message);
+  });
 }
 
 function getAttendance(employeeId, date) {
@@ -2518,12 +2564,14 @@ function addDutyExtraDate() {
   state.visibleDate = new Date(date.getFullYear(), date.getMonth(), 1);
   input.value = "";
   saveSettings();
+  saveDutyExtraDatesToSupabase().catch((error) => console.warn("Supabase duty extra dates save skipped:", error.message));
   render();
 }
 
 function removeDutyExtraDate(key) {
   state.settings.dutyExtraDates = (state.settings.dutyExtraDates ?? []).filter((item) => item !== key);
   saveSettings();
+  saveDutyExtraDatesToSupabase().catch((error) => console.warn("Supabase duty extra dates save skipped:", error.message));
   render();
 }
 
@@ -2805,25 +2853,16 @@ function loadSettings() {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEYS.settings));
     const legacyTheme = localStorage.getItem("gngs.theme");
-    const savedStatuses = saved?.statuses && typeof saved.statuses === "object" ? saved.statuses : {};
-    const statuses = {};
-    STATUS_ORDER.forEach((status) => {
-      statuses[status] = {
-        ...defaultStatusSettings[status],
-        ...(savedStatuses[status] && typeof savedStatuses[status] === "object" ? savedStatuses[status] : {}),
-        code: defaultStatusSettings[status].code,
-      };
-    });
     return {
       ...defaultSettings,
       ...(saved && typeof saved === "object" ? saved : {}),
       theme: saved?.theme ?? (legacyTheme === "dark" ? "dark" : defaultSettings.theme),
       positions: Array.isArray(saved?.positions) && saved.positions.length > 0 ? saved.positions : DEFAULT_POSITIONS,
       dutyExtraDates: Array.isArray(saved?.dutyExtraDates) ? saved.dutyExtraDates.filter((key) => /^\d{4}-\d{2}-\d{2}$/.test(key)) : [],
-      statuses,
+      statuses: normalizeStatusSettings(saved?.statuses),
     };
   } catch {
-    return { ...defaultSettings, positions: [...DEFAULT_POSITIONS], dutyExtraDates: [], statuses: { ...defaultStatusSettings } };
+    return { ...defaultSettings, positions: [...DEFAULT_POSITIONS], dutyExtraDates: [], statuses: normalizeStatusSettings(defaultStatusSettings) };
   }
 }
 
@@ -2909,6 +2948,219 @@ async function deleteEmployeeFromSupabase(employeeId) {
       Prefer: "return=minimal",
     },
   });
+}
+
+async function syncAttendanceFromSupabase() {
+  if (!SUPABASE.url || !SUPABASE.key) return;
+  try {
+    const remoteAttendance = await fetchSupabaseAttendance();
+    const localAttendance = loadAttendance();
+    const hasRemote = Object.keys(remoteAttendance).length > 0;
+    const hasLocal = Object.keys(localAttendance).length > 0;
+    const migrated = localStorage.getItem(STORAGE_KEYS.attendanceMigrated) === "true";
+
+    if (!hasRemote && hasLocal && !migrated) {
+      await syncAttendanceToSupabase(localAttendance);
+      localStorage.setItem(STORAGE_KEYS.attendanceMigrated, "true");
+      return;
+    }
+
+    state.attendance = remoteAttendance;
+    saveAttendance();
+    localStorage.setItem(STORAGE_KEYS.attendanceMigrated, "true");
+    render();
+  } catch (error) {
+    console.warn("Supabase attendance sync skipped:", error.message);
+  }
+}
+
+async function fetchSupabaseAttendance() {
+  const rows = await supabaseRequest(`${SUPABASE.attendanceTable}?select=employee_id,work_date,status,hours&order=work_date.asc`);
+  if (!Array.isArray(rows)) return {};
+  return rows.reduce((result, row) => {
+    const employeeId = String(row.employee_id ?? "");
+    const date = String(row.work_date ?? "");
+    if (!employeeId || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return result;
+    result[employeeId] = result[employeeId] ?? {};
+    result[employeeId][date] = normalizeAttendanceEntry({ status: row.status, hours: row.hours }, parseDateKey(date));
+    return result;
+  }, {});
+}
+
+async function syncAttendanceToSupabase(attendance) {
+  const rows = attendanceRows(attendance);
+  if (!SUPABASE.url || !SUPABASE.key || rows.length === 0) return;
+  await supabaseRequest(`${SUPABASE.attendanceTable}?on_conflict=employee_id,work_date`, {
+    method: "POST",
+    headers: {
+      Prefer: "resolution=merge-duplicates,return=minimal",
+    },
+    body: rows,
+  });
+}
+
+async function saveAttendanceRecordToSupabase(employeeId, date, entry) {
+  if (!SUPABASE.url || !SUPABASE.key || !employeeId || !date || !entry) return;
+  const normalized = normalizeAttendanceEntry(entry, parseDateKey(date));
+  if (!normalized) return;
+  await supabaseRequest(`${SUPABASE.attendanceTable}?on_conflict=employee_id,work_date`, {
+    method: "POST",
+    headers: {
+      Prefer: "resolution=merge-duplicates,return=minimal",
+    },
+    body: {
+      employee_id: employeeId,
+      work_date: date,
+      status: normalized.status,
+      hours: normalized.hours,
+      updated_at: new Date().toISOString(),
+    },
+  });
+}
+
+async function deleteAttendanceRecordFromSupabase(employeeId, date) {
+  if (!SUPABASE.url || !SUPABASE.key || !employeeId || !date) return;
+  await supabaseRequest(`${SUPABASE.attendanceTable}?employee_id=eq.${encodeURIComponent(employeeId)}&work_date=eq.${encodeURIComponent(date)}`, {
+    method: "DELETE",
+    headers: {
+      Prefer: "return=minimal",
+    },
+  });
+}
+
+async function deleteEmployeeAttendanceFromSupabase(employeeId) {
+  if (!SUPABASE.url || !SUPABASE.key || !employeeId) return;
+  await supabaseRequest(`${SUPABASE.attendanceTable}?employee_id=eq.${encodeURIComponent(employeeId)}`, {
+    method: "DELETE",
+    headers: {
+      Prefer: "return=minimal",
+    },
+  });
+}
+
+function attendanceRows(attendance) {
+  return Object.entries(attendance ?? {}).flatMap(([employeeId, dates]) => {
+    return Object.entries(dates ?? {})
+      .map(([date, entry]) => {
+        const normalized = normalizeAttendanceEntry(entry, parseDateKey(date));
+        if (!employeeId || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !normalized) return null;
+        return {
+          employee_id: employeeId,
+          work_date: date,
+          status: normalized.status,
+          hours: normalized.hours,
+          updated_at: new Date().toISOString(),
+        };
+      })
+      .filter(Boolean);
+  });
+}
+
+async function syncSharedSettingsFromSupabase() {
+  if (!SUPABASE.url || !SUPABASE.key) return;
+  try {
+    const rows = await supabaseRequest(`${SUPABASE.settingsTable}?select=key,value&key=in.(duty_extra_dates,positions,statuses)`);
+    const shared = Array.isArray(rows)
+      ? rows.reduce((result, row) => ({ ...result, [row.key]: row.value }), {})
+      : {};
+
+    const remoteDates = normalizeDateKeys(shared.duty_extra_dates);
+    const remotePositions = parsePositions(Array.isArray(shared.positions) ? shared.positions.join("\n") : "");
+    const remoteStatuses = shared.statuses && typeof shared.statuses === "object" ? normalizeStatusSettings(shared.statuses) : null;
+    const localDates = normalizeDateKeys(state.settings.dutyExtraDates);
+    const employeePositions = positionsFromEmployees();
+    const localPositions = !sameStringArray(availablePositions(), DEFAULT_POSITIONS) ? availablePositions() : employeePositions;
+    const localStatuses = normalizeStatusSettings(state.settings.statuses);
+    let changed = false;
+
+    if (remoteDates.length > 0 || hasOwn(shared, "duty_extra_dates")) {
+      state.settings.dutyExtraDates = remoteDates;
+      changed = true;
+    } else if (localDates.length > 0) {
+      await saveSharedSettingToSupabase("duty_extra_dates", localDates);
+    }
+
+    if (Array.isArray(shared.positions) && shared.positions.length > 0) {
+      state.settings.positions = remotePositions;
+      changed = true;
+    } else if (localPositions.length > 0) {
+      state.settings.positions = localPositions;
+      await saveSharedSettingToSupabase("positions", localPositions);
+      changed = true;
+    }
+
+    if (remoteStatuses) {
+      state.settings.statuses = remoteStatuses;
+      changed = true;
+    } else if (!sameJson(localStatuses, normalizeStatusSettings(defaultStatusSettings))) {
+      await saveSharedSettingToSupabase("statuses", localStatuses);
+    }
+
+    if (changed) {
+      saveSettings();
+      applySettings();
+      fillPositionSelects();
+      render();
+    }
+  } catch (error) {
+    console.warn("Supabase settings sync skipped:", error.message);
+  }
+}
+
+async function saveDutyExtraDatesToSupabase() {
+  if (!SUPABASE.url || !SUPABASE.key) return;
+  await saveSharedSettingToSupabase("duty_extra_dates", normalizeDateKeys(state.settings.dutyExtraDates));
+}
+
+async function saveSharedSettingsChanges(previousPositions, previousStatuses) {
+  if (!SUPABASE.url || !SUPABASE.key) return;
+  const currentPositions = availablePositions();
+  const currentStatuses = normalizeStatusSettings(state.settings.statuses);
+  const tasks = [];
+
+  if (!sameStringArray(previousPositions, currentPositions)) {
+    tasks.push(saveSharedSettingToSupabase("positions", currentPositions));
+  }
+
+  if (!sameJson(previousStatuses, currentStatuses)) {
+    tasks.push(saveSharedSettingToSupabase("statuses", currentStatuses));
+  }
+
+  if (tasks.length > 0) {
+    await Promise.all(tasks);
+  }
+}
+
+async function saveSharedSettingToSupabase(key, value) {
+  await supabaseRequest(`${SUPABASE.settingsTable}?on_conflict=key`, {
+    method: "POST",
+    headers: {
+      Prefer: "resolution=merge-duplicates,return=minimal",
+    },
+    body: {
+      key,
+      value,
+      updated_at: new Date().toISOString(),
+    },
+  });
+}
+
+function normalizeDateKeys(value) {
+  return [...new Set((Array.isArray(value) ? value : []).filter((key) => /^\d{4}-\d{2}-\d{2}$/.test(String(key))))].sort();
+}
+
+function sameStringArray(left, right) {
+  const leftValue = Array.isArray(left) ? left : [];
+  const rightValue = Array.isArray(right) ? right : [];
+  return leftValue.length === rightValue.length && leftValue.every((item, index) => item === rightValue[index]);
+}
+
+function sameJson(left, right) {
+  return JSON.stringify(left) === JSON.stringify(right);
+}
+
+function hasOwn(object, key) {
+  return Object.prototype.hasOwnProperty.call(object, key);
 }
 
 async function supabaseRequest(path, options = {}) {
